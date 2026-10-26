@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cities, pageContent } from './pages-content.js';
 import { pageHref } from './preferences.js';
 import { normalizePhone } from '../shared/courier.js';
+import LegalPage from './LegalPage.jsx';
 
 function PageHeading({ title, intro, language, label, Icon }) {
   const c = pageContent[language];
@@ -121,21 +122,9 @@ export default function SitePage({ page, language, Icon }) {
     <section className="about-contact"><div className="shell"><h2>{c.teamTitle}</h2><div className="contact-details"><div><h3>{c.location}</h3><p>{c.appointment}</p></div><div><h3>{c.hours}</h3><p>{c.hoursDetail}</p></div><div><a href="mailto:info@giftly.sa">info@giftly.sa</a><p>{c.company}</p><p>{c.registration}</p></div></div><a className="button" href={pageHref('/', language, 'get-giftly')}>{c.download}<Icon name="diagonal" /></a></div></section>
   </>;
   if (page === 'privacy' || page === 'terms') {
-    const sections = page === 'privacy' ? c.privacySections : c.termsSections;
-    return <><PageHeading title={c[page]} intro={c[`${page}Intro`]} label="Giftly" language={language} Icon={Icon} />
-      <div className="shell legal-layout section-space">
-        <aside><h2>{c.contents}</h2><nav aria-label={c.contents}>{sections.map(([title], index) => <a key={title} href={`#legal-${index}`}>{title}</a>)}</nav></aside>
-        <article className="legal-article">
-          <p className="legal-updated">{c.updatedLabel}: <time dateTime="2026-10-26">{c.updatedDate}</time></p>
-          {sections.map(([title, paragraphs], index) => <section id={`legal-${index}`} key={title} aria-labelledby={`legal-title-${index}`}>
-            <h2 id={`legal-title-${index}`}>{title}</h2>
-            {paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-          </section>)}
-          {page === 'terms' && <p className="legal-note">{c.paymentNote}</p>}
-          <div className="legal-contact"><p>{c.contact}<a href="mailto:info@giftly.sa">info@giftly.sa</a></p><p>{c.company} — {c.registration}</p><a className="text-link" href={`https://giftly.sa/${page}`} target="_blank" rel="noopener noreferrer">{c.source}<Icon name="diagonal" /></a></div>
-        </article>
-      </div>
-    </>;
+    return <LegalPage page={page} language={language} Icon={Icon}>
+      <PageHeading title={c[page]} intro={c[`${page}Intro`]} label="Giftly" language={language} Icon={Icon} />
+    </LegalPage>;
   }
   return <PageHeading title={c.notFound} intro={c.notFoundBody} label="Giftly" language={language} Icon={Icon} />;
 }

@@ -217,7 +217,6 @@ export default function App() {
         <div className="footer-identity"><Brand footer language={language} /><p>{copy.footerMade}</p></div>
         <nav aria-label={ar ? 'روابط التذييل' : 'Footer navigation'}>
           {['about', 'couriers', 'privacy', 'terms'].map((target) => <a key={target} href={pageHref(`/${target}`, language)} aria-current={page === target ? 'page' : undefined}>{pageCopy[target]}</a>)}
-          <a href={pageHref('/', language, 'security')}>{copy.security.label}</a>
         </nav>
         <a className="back-top" href="#top" aria-label={copy.back}><Icon name="arrow" /></a>
       </div>
