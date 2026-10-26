@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { CSV_MAX_BYTES, parseCourierCsv, courierCsvTemplate } from '../shared/courier-csv.js';
-import { adminJson } from './admin-client.js';
+import { adminJson, getAdminSession } from './admin-client.js';
+import { adminBasePath } from '../shared/page-routes.js';
 
 const labels = {
   ar: {
-    title: 'استيراد وتصدير الطلبات', hint: 'التصدير يشمل جميع النتائج المطابقة للفلاتر والترتيب الحالي، حتى 10,000 طلب.',
-    export: 'تصدير CSV', import: 'استيراد CSV', template: 'تحميل قالب الاستيراد', choose: 'اختر ملف CSV', cancel: 'إغلاق',
+    title: 'استيراد وتصدير الطلبات', hint: 'صدّر جميع الطلبات أو كل النتائج المطابقة لفلاتر الحالة والمدينة والجوال والجهاز، دون حد لعدد السجلات وبغض النظر عن الصفحة الحالية.',
+    exportAll: 'تصدير الكل', exportFiltered: 'تصدير النتائج المفلترة', import: 'استيراد CSV', template: 'تحميل قالب الاستيراد', choose: 'اختر ملف CSV', cancel: 'إغلاق',
     fileHint: 'ملف UTF-8 حتى 2 ميغابايت و1,000 صف. استخدم القالب لأسماء الأعمدة. لن تُستبدل أرقام الجوال المسجّلة مسبقاً.',
     confirm: 'أؤكد أن لدي صلاحية استخدام هذه البيانات والتواصل مع أصحابها بشأن الانضمام.',
     save: 'تأكيد الاستيراد', working: 'جارٍ التنفيذ…', reading: 'جارٍ قراءة الملف…', rows: 'صفوف الملف', valid: 'طلبات صالحة', duplicates: 'مكرر داخل الملف',
     errors: 'صحّح الأخطاء في الملف ثم اختره مجدداً. لم يُحفظ أي صف.', row: 'الصف', preview: 'معاينة أول خمسة طلبات', name: 'الاسم', phone: 'الجوال', city: 'المدينة',
     empty: 'القالب فارغ. أضف بيانات الطلبات ثم اختر الملف مجدداً.', saved: (added, skipped) => `تمت إضافة ${added} طلب وتجاوز ${skipped} طلب مكرر.`,
-    exported: (count) => `تم تصدير ${count} طلب.`, failed: 'تعذّر إكمال العملية. حاول مرة أخرى.', limited: 'محاولات كثيرة. انتظر قليلاً ثم حاول مجدداً.',
-    export_too_many_rows: 'النتائج تتجاوز 10,000 طلب. حدّد البحث أو الحالة ثم أعد التصدير.',
+    exportRequested: 'تم طلب تنزيل الملف. تابع التنزيل من قائمة التنزيلات في المتصفح.', failed: 'تعذّر إكمال العملية. حاول مرة أخرى.', limited: 'محاولات كثيرة. انتظر قليلاً ثم حاول مجدداً.',
     csv_too_large: 'حجم الملف أكبر من 2 ميغابايت.', csv_too_many_rows: 'الملف يتجاوز 1,000 صف. قسّمه إلى ملفات أصغر.',
     csv_headers: 'أسماء الأعمدة غير صحيحة أو ناقصة. استخدم القالب؛ الأعمدة المطلوبة: name, phone, city, phone_type.',
     csv_syntax: 'صيغة CSV غير صحيحة. احفظ الملف بترميز UTF-8 مع فصل الأعمدة بفاصلة.', csv_columns: 'عدد الأعمدة لا يطابق العناوين.',
@@ -20,15 +20,14 @@ const labels = {
     csv_date: 'التاريخ غير صحيح. استخدم YYYY-MM-DD HH:mm:ss بتوقيت UTC أو صيغة ISO تنتهي بـ Z.',
   },
   en: {
-    title: 'Import and export applications', hint: 'Export includes every match for the current filters and sorting, up to 10,000 applications.',
-    export: 'Export CSV', import: 'Import CSV', template: 'Download import template', choose: 'Choose a CSV file', cancel: 'Close',
+    title: 'Import and export applications', hint: 'Export all applications or every match for the status, city, mobile and device filters, with no record-count limit and regardless of the current page.',
+    exportAll: 'Export all', exportFiltered: 'Export filtered results', import: 'Import CSV', template: 'Download import template', choose: 'Choose a CSV file', cancel: 'Close',
     fileHint: 'UTF-8 CSV, up to 2 MB and 1,000 rows. Use the template headers. Existing mobile numbers will not be overwritten.',
     confirm: 'I confirm that I am authorized to use these details and contact these applicants about joining.',
     save: 'Confirm import', working: 'Working…', reading: 'Reading file…', rows: 'File rows', valid: 'Valid applications', duplicates: 'Duplicates in file',
     errors: 'Correct the file and select it again. No rows have been saved.', row: 'Row', preview: 'Preview of the first five applications', name: 'Name', phone: 'Mobile', city: 'City',
     empty: 'The template is empty. Add application details and select the file again.', saved: (added, skipped) => `Added ${added} applications; skipped ${skipped} duplicates.`,
-    exported: (count) => `Exported ${count} applications.`, failed: 'The operation could not be completed. Please try again.', limited: 'Too many attempts. Wait before trying again.',
-    export_too_many_rows: 'More than 10,000 results. Narrow the search or status filter and export again.',
+    exportRequested: 'Download requested. Follow its progress in your browser’s downloads list.', failed: 'The operation could not be completed. Please try again.', limited: 'Too many attempts. Wait before trying again.',
     csv_too_large: 'The file exceeds 2 MB.', csv_too_many_rows: 'The file exceeds 1,000 rows. Split it into smaller files.',
     csv_headers: 'Missing, duplicated, or unknown headers. Use the template; required columns: name, phone, city, phone_type.',
     csv_syntax: 'Invalid CSV. Save as UTF-8 with comma-separated columns.', csv_columns: 'The number of columns does not match the headers.',
@@ -44,7 +43,7 @@ function downloadCsv(csv, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
-export default function AdminTransfer({ language, filters, csrfToken, onSession, onImported, disabled }) {
+export default function AdminTransfer({ language, filters, csrfToken, onSession, onImported, disabled, filteredDisabled }) {
   const c = labels[language];
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState(null);
@@ -80,17 +79,19 @@ export default function AdminTransfer({ language, filters, csrfToken, onSession,
     finally { operation.current = false; if (alive.current) setBusy(''); }
   }
 
-  async function exportFile() {
+  async function exportFile(scope) {
     if (operation.current) return;
-    operation.current = true; setBusy('export'); setError(''); setResult(null);
-    const controller = new AbortController(); request.current = controller;
+    operation.current = true; setBusy(scope); setError(''); setResult(null);
     try {
-      const query = new URLSearchParams(filters);
-      const value = await adminJson(`/couriers/export?${query}`, { signal: controller.signal }, onSession);
+      const session = await getAdminSession();
       if (!alive.current) return;
-      if (typeof value.csv !== 'string' || !Number.isInteger(value.count)) throw new Error('invalid_response');
-      downloadCsv(value.csv, `giftly-couriers-${new Date().toISOString().slice(0, 10)}.csv`);
-      setResult({ type: 'export', count: value.count });
+      if (!session.authenticated) { onSession(session); return; }
+      const query = new URLSearchParams({ ...(scope === 'filtered' ? filters : {}), scope, format: 'csv' });
+      const link = document.createElement('a');
+      link.href = `${adminBasePath(window.location.pathname)}/api/couriers/export?${query}`;
+      link.download = `giftly-couriers-${scope}-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.append(link); link.click(); link.remove();
+      setResult({ type: 'export' });
     } catch (error) { failure(error); }
     finally { operation.current = false; if (alive.current) setBusy(''); }
   }
@@ -109,7 +110,8 @@ export default function AdminTransfer({ language, filters, csrfToken, onSession,
 
   return <section className="admin-transfer" aria-labelledby="transfer-title">
     <div className="admin-transfer-heading"><div><h2 id="transfer-title">{c.title}</h2><p>{c.hint}</p></div><div className="admin-transfer-actions">
-      <button className="button button-small" onClick={exportFile} disabled={disabled || !!busy}>{busy === 'export' ? c.working : c.export}</button>
+      <button className="button button-small" onClick={() => exportFile('all')} disabled={disabled || !!busy}>{busy === 'all' ? c.working : c.exportAll}</button>
+      <button className="text-link" onClick={() => exportFile('filtered')} disabled={disabled || filteredDisabled || !!busy}>{busy === 'filtered' ? c.working : c.exportFiltered}</button>
       <button className="text-link" aria-expanded={open} aria-controls="courier-import" onClick={() => { setOpen(!open); setError(''); }} disabled={disabled || !!busy}>{open ? c.cancel : c.import}</button>
     </div></div>
     {open && <div id="courier-import" className="admin-import">
@@ -125,6 +127,6 @@ export default function AdminTransfer({ language, filters, csrfToken, onSession,
       </div>}
     </div>}
     {error && <p className="form-error" role="alert">{c[error] || c.failed}</p>}
-    <p className="admin-transfer-result" role="status">{result ? result.type === 'export' ? c.exported(result.count) : c.saved(result.added, result.skipped) : ''}</p>
+    <p className="admin-transfer-result" role="status">{result ? result.type === 'export' ? c.exportRequested : c.saved(result.added, result.skipped) : ''}</p>
   </section>;
 }

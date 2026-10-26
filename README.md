@@ -160,7 +160,8 @@ Private routes:
 | `POST <ADMIN_PATH>/api/refresh` | Rotate the refresh token and issue a fresh 15-minute access JWT; requires refresh cookie, same origin and CSRF |
 | `DELETE <ADMIN_PATH>/api/session` | Sign out; requires session, same origin, and `X-CSRF-Token` |
 | `GET <ADMIN_PATH>/api/couriers?search=&city=&phone=&phoneType=&status=&sortBy=created_at&sortDirection=desc&page=1&pageSize=20` | List applications after sign-in; return items, filtered total, clamped page, page size, total pages, previous/next availability and existing city options |
-| `GET <ADMIN_PATH>/api/couriers/export` with the same filters and sorting | Return `{csv,count}` for every filtered match, across pages; maximum 10,000 records |
+| `GET <ADMIN_PATH>/api/couriers/export?scope=all&format=csv` | Stream every registration as a CSV attachment, ignoring active filters and pagination; no record-count cap |
+| `GET <ADMIN_PATH>/api/couriers/export?scope=filtered&format=csv` with city/mobile/device/status filters | Stream every matching registration across all pages; no record-count cap |
 | `POST <ADMIN_PATH>/api/couriers/import` | Validate and atomically import `{csv,confirmed:true}`; requires CSRF and same origin |
 | `PATCH <ADMIN_PATH>/api/couriers/:id` | Set a review status, for example `{ "status": "contacted" }`; requires CSRF and same origin |
 
@@ -168,7 +169,9 @@ Passwords are checked with scrypt and constant-time comparisons. A secret-keyed 
 
 ### CSV transfer
 
-The dashboard exports all matches for the **applied** city, mobile number, device and status, in the selected order, rather than just the visible page. Known city IDs and their Arabic/English labels are treated as aliases; custom cities also appear in the filter. Mobile-number filtering accepts partial local digits, full Saudi international numbers and Arabic/Persian digits. Narrow the filters if results exceed 10,000. CSV files use UTF-8 with a BOM, quoted cells and formula escaping; phone values receive a leading apostrophe to retain their zero in spreadsheet tools. The importer understands that prefix.
+The dashboard has separate **Export all** and **Export filtered results** actions. Export all ignores the active filters. Filtered export includes every match for the **applied** city, mobile number, device and status, rather than just the visible page. Both actions have **no record-count cap**. Native browser downloads stream rows from a dedicated SQLite read snapshot, handle backpressure and close the reader on completion or cancellation, without holding the whole CSV in dashboard JavaScript or using its normal request timeout. Existing JSON clients can omit `format=csv` to receive `{csv,count}` without the old cap; the default scope remains `filtered`. Export pagination parameters are ignored. Import retains its separate 1,000-row / 2 MB validation limits.
+
+Known city IDs and their Arabic/English labels are treated as aliases; custom cities also appear in the filter. Mobile-number filtering accepts partial local digits, full Saudi international numbers and Arabic/Persian digits. CSV files use UTF-8 with a BOM, quoted cells and formula escaping; phone values receive a leading apostrophe to retain their zero in spreadsheet tools. The importer understands that prefix.
 
 Use **Download import template** to get a blank file. Required headers: `name,phone,city,phone_type`. Optional headers: `id,ref,locale,status,consent_at,created_at,updated_at`. Imported IDs are ignored; SQLite assigns IDs. Device values are `iphone` (or `ios`) and `android`; locale defaults to `ar`, status to `new`. Cities accept known IDs or Arabic/English labels, plus valid custom city names. Dates accept UTC `YYYY-MM-DD HH:mm:ss` with optional three-digit milliseconds, or ISO UTC ending in `Z`; timestamp precision is preserved. Missing creation/update times use server defaults. Missing consent evidence stays null and is never invented.
 

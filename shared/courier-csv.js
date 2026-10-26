@@ -11,7 +11,12 @@ const escapeCell = (value, column) => {
 };
 
 export function createCourierCsv(records) {
-  return '\ufeff' + [csvColumns.join(','), ...records.map((row) => csvColumns.map((column) => escapeCell(row[column], column)).join(','))].join('\r\n') + '\r\n';
+  return [...courierCsvChunks(records)].join('');
+}
+
+export function* courierCsvChunks(records) {
+  yield '\ufeff' + csvColumns.join(',') + '\r\n';
+  for (const row of records) yield csvColumns.map((column) => escapeCell(row[column], column)).join(',') + '\r\n';
 }
 
 export function courierCsvTemplate() {

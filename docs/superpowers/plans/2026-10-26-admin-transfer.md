@@ -2,7 +2,7 @@
 
 Implement immediately as previously authorized. Use CSV without adding dependencies.
 
-- Export all matches for the current search/status filters, across pages (maximum 10,000 records; refuse oversized exports instead of silently truncating). Use UTF-8 BOM, quoted cells and spreadsheet formula protection. Provide an import template.
+- Export every registration or every match for the active city/mobile/device/status filters, across all pages, without a record-count cap. Stream CSV downloads with UTF-8 BOM, quoted cells and spreadsheet formula protection. Provide an import template.
 - Import up to 1,000 rows / 2 MB through a preview with validation errors, duplicate counts and an explicit permission-to-use-data checkbox. Accept reference courier_leads column names plus review metadata. Normalize Saudi phones, resolve city labels, preserve valid timestamps/status/ref, and skip existing phones without updates. Do not fabricate historical consent timestamps.
 - Require admin authentication; protect imports with origin/CSRF and rate limits. Validate on the server and use one transaction. Do not alter base schema or existing registrations.
 - Add meaningful CSV, storage and HTTP authorization/atomicity tests. Use temporary test databases only. Verify rendering without importing fabricated records into the user's database.

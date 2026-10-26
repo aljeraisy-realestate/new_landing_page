@@ -1,8 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
+import { once } from 'node:events';
 import { reviewStatuses, validateCourier } from '../shared/courier.js';
 import { hash } from './store.js';
 import { createAdminAuth } from './admin-auth.js';
-import { CSV_MAX_BYTES, createCourierCsv, parseCourierCsv } from '../shared/courier-csv.js';
+import { CSV_MAX_BYTES, courierCsvChunks, createCourierCsv, parseCourierCsv } from '../shared/courier-csv.js';
 import { normalizeCourierFilters } from '../shared/courier-filters.js';
 
 export class HttpError extends Error {
@@ -12,6 +13,23 @@ export class HttpError extends Error {
 function json(response, value, status = 200, extra = {}) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, no-store', Vary: 'Cookie', ...extra });
   response.end(JSON.stringify(value));
+}
+
+async function streamCourierCsv(response, rows, scope) {
+  const controller = new AbortController();
+  const close = () => { if (!response.writableFinished) controller.abort(); };
+  response.once('close', close);
+  try {
+    response.writeHead(200, {
+      'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'private, no-store', Vary: 'Cookie',
+      'Content-Disposition': `attachment; filename="giftly-couriers-${scope}-${new Date().toISOString().slice(0, 10)}.csv"`,
+    });
+    for (const chunk of courierCsvChunks(rows)) {
+      if (response.destroyed) break;
+      if (!response.write(chunk)) await once(response, 'drain', { signal: controller.signal });
+    }
+    if (!response.destroyed) response.end();
+  } finally { response.off('close', close); }
 }
 
 function readJson(request, maximum = 8192) {
@@ -130,13 +148,22 @@ export function createApi({ store, origins, secureCookies, now = Date.now, cooki
           return true;
         }
         if (['/api/admin/couriers', '/api/admin/couriers/export'].includes(url.pathname) && method === 'GET') {
+          const exporting = url.pathname.endsWith('/export');
+          const scope = url.searchParams.get('scope') || 'filtered';
+          const format = url.searchParams.get('format') || 'json';
+          if (exporting && (!['all', 'filtered'].includes(scope) || !['json', 'csv'].includes(format))) throw new HttpError(400, 'invalid_export');
+          const parameters = exporting && scope === 'all' ? {} : Object.fromEntries(url.searchParams);
+          if (exporting) { delete parameters.page; delete parameters.pageSize; }
           let filters;
-          try { filters = normalizeCourierFilters(Object.fromEntries(url.searchParams)); }
+          try { filters = normalizeCourierFilters(parameters); }
           catch { throw new HttpError(400, 'invalid_filters'); }
-          if (url.pathname.endsWith('/export')) {
+          if (exporting) {
             limited(`login:export:${address}`, 20, 15 * 60 * 1000);
+            if (format === 'csv') {
+              await streamCourierCsv(response, store.exportCourierRows(filters), scope);
+              return true;
+            }
             const rows = store.exportCouriers(filters);
-            if (rows.length > 10000) throw new HttpError(422, 'export_too_many_rows');
             json(response, { csv: createCourierCsv(rows), count: rows.length });
             return true;
           }
@@ -157,6 +184,7 @@ export function createApi({ store, origins, secureCookies, now = Date.now, cooki
       }
       throw new HttpError(404, 'not_found');
     } catch (error) {
+      if (response.headersSent) { response.destroy(); return true; }
       const status = error instanceof HttpError ? error.status : 500;
       json(response, { error: error instanceof HttpError ? error.message : 'server_error' }, status, { ...(error.retry ? { 'Retry-After': String(error.retry) } : {}), ...(status === 413 ? { Connection: 'close' } : {}) });
     }

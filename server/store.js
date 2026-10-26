@@ -82,8 +82,17 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     },
     exportCouriers(filters) {
+      return [...this.exportCourierRows(filters)];
+    },
+    *exportCourierRows(filters) {
       const { from, where, params, order } = courierQuery(filters);
-      return db.prepare(`SELECT leads.*, COALESCE(reviews.status, 'new') AS status, reviews.consent_at ${from} ${where} ORDER BY ${order} LIMIT 10001`).all(...params);
+      // A dedicated read snapshot lets exports pause for a slow download without
+      // blocking registrations or sharing a transaction with the main connection.
+      const reader = new DatabaseSync(file, { readOnly: true, enableDoubleQuotedStringLiterals: false });
+      try {
+        reader.exec('PRAGMA busy_timeout = 5000; BEGIN');
+        yield* reader.prepare(`SELECT leads.*, COALESCE(reviews.status, 'new') AS status, reviews.consent_at ${from} ${where} ORDER BY ${order}`).iterate(...params);
+      } finally { reader.close(); }
     },
     createSession(token, binding, expiresAt, refreshToken) {
       db.exec('BEGIN IMMEDIATE');
