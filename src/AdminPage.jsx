@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cities, reviewStatuses } from '../shared/courier.js';
 import { adminJson, adminSignIn, adminSignOut, getAdminSession } from './admin-client.js';
 import AdminTransfer from './AdminTransfer.jsx';
-import { canonicalCity, courierPageSizes, courierSortFields } from '../shared/courier-filters.js';
+import { canonicalCity, courierPageSizes } from '../shared/courier-filters.js';
 
 const labels = {
   ar: {
@@ -17,7 +17,7 @@ const labels = {
     empty: 'لا توجد طلبات مطابقة.', emptyHint: 'ستظهر هنا طلبات المندوبين بعد إرسال نموذج الانضمام.',
     previous: 'السابق', next: 'التالي', page: 'الصفحة', of: 'من', results: 'نتيجة',
     saved: 'تم حفظ الحالة.', statusFor: 'حالة طلب', retry: 'حاول مرة أخرى',
-    id: 'المعرّف', allCities: 'كل المدن', allDevices: 'كل الأجهزة', sortBy: 'ترتيب حسب', sortDirection: 'اتجاه الترتيب', asc: 'تصاعدي', desc: 'تنازلي', pageSize: 'عدد السجلات في الصفحة', clear: 'مسح الفلاتر', filtersError: 'تحقق من رقم الجوال والفلاتر ثم حاول مجدداً.',
+    id: 'المعرّف', allCities: 'كل المدن', allDevices: 'كل الأجهزة', sortDirection: 'اتجاه الترتيب', asc: 'تصاعدي', desc: 'تنازلي', pageSize: 'عدد السجلات في الصفحة', clear: 'مسح الفلاتر', filtersError: 'تحقق من رقم الجوال والفلاتر ثم حاول مجدداً.',
   },
   en: {
     title: 'Courier applications', intro: 'Review registered applicants and keep track of follow-up in one place.',
@@ -31,7 +31,7 @@ const labels = {
     empty: 'No matching applications.', emptyHint: 'Submitted courier applications will appear here.',
     previous: 'Previous', next: 'Next', page: 'Page', of: 'of', results: 'results',
     saved: 'Status saved.', statusFor: 'Application status for', retry: 'Try again',
-    id: 'ID', allCities: 'All cities', allDevices: 'All devices', sortBy: 'Sort by', sortDirection: 'Sort direction', asc: 'Ascending', desc: 'Descending', pageSize: 'Records per page', clear: 'Clear filters', filtersError: 'Check the mobile number and filters, then try again.',
+    id: 'ID', allCities: 'All cities', allDevices: 'All devices', sortDirection: 'Sort direction', asc: 'Ascending', desc: 'Descending', pageSize: 'Records per page', clear: 'Clear filters', filtersError: 'Check the mobile number and filters, then try again.',
   },
 };
 
@@ -51,7 +51,6 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
   const [draftPhone, setDraftPhone] = useState('');
   const [phone, setPhone] = useState('');
   const [phoneType, setPhoneType] = useState('');
-  const [sortBy, setSortBy] = useState('created_at');
   const [sortDirection, setSortDirection] = useState('desc');
   const [pageSize, setPageSize] = useState(20);
   const [cityOptions, setCityOptions] = useState([]);
@@ -64,7 +63,7 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
   const savingRef = useRef(false);
   const ready = useRef(null);
   const messageFor = (failure) => failure.status === 429 ? 'limited' : failure.message === 'invalid_credentials' ? 'invalid' : failure.message === 'invalid_filters' ? 'filtersError' : 'error';
-  const filters = { search, status, city, phone, phoneType, sortBy, sortDirection };
+  const filters = { search, status, city, phone, phoneType, sortBy: 'created_at', sortDirection };
   const queryKey = new URLSearchParams({ ...filters, page: String(page), pageSize: String(pageSize) }).toString();
   const matchesQuery = data?.queryKey === queryKey;
 
@@ -182,7 +181,6 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
   const lastRecord = matchesQuery && data.total ? firstRecord + data.items.length - 1 : 0;
   const paginationBusy = !matchesQuery || loading || busy || !!saving;
   const cityLabel = (value) => cities.find(([id]) => id === canonicalCity(value))?.[language === 'ar' ? 1 : 2] || value;
-  const sortLabel = (value) => c[value === 'created_at' ? 'created' : value === 'phone_type' ? 'device' : value];
   return <section className="shell admin-section">
     <div className="admin-heading"><div><h1 ref={ready} tabIndex="-1">{c.title}</h1><p>{c.intro}</p></div><div className="admin-actions"><button className="text-link" onClick={() => setRevision((value) => value + 1)} disabled={loading || busy}>{c.refresh}</button><button className="button button-small" onClick={signOut} disabled={busy || !!saving}>{c.logout}</button></div></div>
     <div className="admin-counts">{['total', ...reviewStatuses].map((key) => <article key={key}><span>{c[key]}</span><strong>{data?.counts[key] ?? '—'}</strong></article>)}</div>
@@ -193,7 +191,6 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
       <label className="form-field"><span>{c.city}</span><select aria-label={c.city} value={city} onChange={(event) => { setCity(event.target.value); setPage(1); }}><option value="">{c.allCities}</option>{cityOptions.map((value) => <option key={value} value={value}>{cityLabel(value)}</option>)}</select></label>
       <label className="form-field"><span>{c.device}</span><select aria-label={c.device} value={phoneType} onChange={(event) => { setPhoneType(event.target.value); setPage(1); }}><option value="">{c.allDevices}</option><option value="iphone">iPhone / iOS</option><option value="android">Android</option></select></label>
       <label className="form-field"><span>{c.filter}</span><select aria-label={c.filter} value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="">{c.all}</option>{reviewStatuses.map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></label>
-      <label className="form-field"><span>{c.sortBy}</span><select aria-label={c.sortBy} value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPage(1); }}>{courierSortFields.map((value) => <option key={value} value={value}>{sortLabel(value)}</option>)}</select></label>
       <label className="form-field"><span>{c.sortDirection}</span><select aria-label={c.sortDirection} value={sortDirection} onChange={(event) => { setSortDirection(event.target.value); setPage(1); }}><option value="asc">{c.asc}</option><option value="desc">{c.desc}</option></select></label>
       <div className="admin-filter-actions"><button className="button" type="submit" disabled={busy || !!saving}>{c.searchButton}</button><button className="text-link" type="button" onClick={() => { setDraftSearch(''); setSearch(''); setDraftPhone(''); setPhone(''); setCity(''); setPhoneType(''); setStatus(''); setPage(1); }}>{c.clear}</button></div>
     </form>
