@@ -17,6 +17,7 @@ export default function LegalPage({ page, language, Icon, children }) {
     let frame = 0;
     let current = null;
     let disposed = false;
+    let initialAnchor = elements.find((element) => `#${element.id}` === window.location.hash);
 
     const update = () => {
       frame = 0;
@@ -26,6 +27,11 @@ export default function LegalPage({ page, language, Icon, children }) {
       layout.current.style.setProperty('--legal-header-height', `${headerHeight}px`);
       layout.current.style.setProperty('--legal-toc-height', `${contentsHeight}px`);
       layout.current.style.setProperty('--legal-scroll-padding', window.getComputedStyle(document.documentElement).scrollPaddingTop);
+      // React creates these anchors after the browser's initial fragment lookup.
+      if (initialAnchor) {
+        initialAnchor.scrollIntoView({ block: 'start', behavior: 'instant' });
+        initialAnchor = null;
+      }
       const atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
       const id = activeLegalSection(elements.map((element) => ({ id: element.id, top: element.getBoundingClientRect().top })), headerHeight + contentsHeight + 24, atBottom);
       if (!id || id === current) return;
