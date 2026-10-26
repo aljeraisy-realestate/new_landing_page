@@ -18,6 +18,15 @@ test('existing-volume deployments fail rather than create a replacement database
   assert.equal(sqliteFile(root, undefined, 'original', true), file);
   assert.throws(() => sqliteFile(root, 'missing.sqlite', undefined, true), /existing Giftly database/i);
 });
+
+test('private backup directories are not searched or mistaken for the active database', (t) => {
+  const root = fixture(t);
+  const source = join(root, 'state', 'v3', 'd1', 'original.sqlite');
+  originalDatabase(source);
+  originalDatabase(join(root, 'state', 'backup-before-new-landing-20261026', 'copy.sqlite'));
+  originalDatabase(join(root, 'state', 'backups', 'older.sqlite'));
+  assert.equal(sqliteFile(root, undefined, 'state', true), source);
+});
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'giftly-directory-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));

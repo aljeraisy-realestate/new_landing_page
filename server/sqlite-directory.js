@@ -22,7 +22,10 @@ function databaseFiles(directory) {
     const path = resolve(directory, entry.name);
     // A linked database must not be overlooked and replaced with a new empty file.
     if (entry.isSymbolicLink()) throw new Error('SQLITE_DATA_DIR must not contain symbolic links; use the real database folder.');
-    if (entry.isDirectory()) return databaseFiles(path);
+    if (entry.isDirectory()) {
+      if (entry.name === 'backups' || entry.name.startsWith('backup-')) return [];
+      return databaseFiles(path);
+    }
     return entry.isFile() && /\.(sqlite|sqlite3|db)$/i.test(entry.name) ? [path] : [];
   });
 }

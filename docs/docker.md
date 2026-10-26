@@ -39,6 +39,8 @@ The runtime user is `node` (UID/GID 1000 in this image). When restoring files fr
 
 ## Public store links
 
+Before the production changeover, a verified SQLite snapshot was saved in `/data/backup-before-new-landing-20261026/original.sqlite.bak` on the original app volume. The original app now builds this repository's `main` branch while retaining its existing `/data` storage and domains. Recovery copies in `backups/` or `backup-*/` directories are excluded from automatic database discovery.
+
 `VITE_APP_STORE_URL` and `VITE_PLAY_STORE_URL` are public build arguments populated from Compose's environment interpolation. Rebuild to change them. Authentication settings and the management URL are runtime-only values, excluded from the build context by `.dockerignore`.
 
 ## Verification boundary
