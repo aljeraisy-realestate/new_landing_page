@@ -11,7 +11,7 @@ const labels = {
     loading: 'جارٍ التحميل…', logout: 'تسجيل الخروج', refresh: 'تحديث',
     setup: 'أضف ADMIN_USERNAME وADMIN_PASSWORD وADMIN_JWT_SECRET في ملف .env الخاص بالخادم، ثم أعد تشغيله. يلزم اسم مستخدم من 3 أحرف وكلمة مرور من 4 أحرف على الأقل ومفتاح عشوائي من 64 خانة بالنظام الست عشري.',
     invalid: 'بيانات الدخول غير صحيحة.', limited: 'محاولات كثيرة. انتظر قليلاً قبل المحاولة مجدداً.', error: 'تعذّر إكمال العملية. حاول مرة أخرى.',
-    search: 'ابحث بالاسم أو رقم الجوال أو المدينة', searchButton: 'بحث', filter: 'حالة الطلب', all: 'كل الحالات',
+    searchButton: 'بحث', filter: 'حالة الطلب', all: 'كل الحالات',
     total: 'جميع الطلبات', new: 'جديد', contacted: 'تم التواصل', accepted: 'مقبول',
     name: 'الاسم', phone: 'رقم الجوال', city: 'المدينة', device: 'الجهاز', ref: 'الإحالة', created: 'تاريخ التسجيل', status: 'الحالة',
     empty: 'لا توجد طلبات مطابقة.', emptyHint: 'ستظهر هنا طلبات المندوبين بعد إرسال نموذج الانضمام.',
@@ -25,7 +25,7 @@ const labels = {
     loading: 'Loading…', logout: 'Sign out', refresh: 'Refresh',
     setup: 'Set ADMIN_USERNAME, ADMIN_PASSWORD and ADMIN_JWT_SECRET in the server’s private .env file, then restart it. Use at least 3 characters for the username, 4 for the password, and 64 random hexadecimal characters for the signing secret.',
     invalid: 'The sign-in details are incorrect.', limited: 'Too many attempts. Wait before trying again.', error: 'The request could not be completed. Please try again.',
-    search: 'Search by name, mobile number, or city', searchButton: 'Search', filter: 'Application status', all: 'All statuses',
+    searchButton: 'Search', filter: 'Application status', all: 'All statuses',
     total: 'All applications', new: 'New', contacted: 'Contacted', accepted: 'Accepted',
     name: 'Name', phone: 'Mobile number', city: 'City', device: 'Device', ref: 'Referral', created: 'Registered', status: 'Status',
     empty: 'No matching applications.', emptyHint: 'Submitted courier applications will appear here.',
@@ -44,8 +44,6 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [draftSearch, setDraftSearch] = useState('');
-  const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [city, setCity] = useState('');
   const [draftPhone, setDraftPhone] = useState('');
@@ -62,7 +60,7 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
   const savingRef = useRef(false);
   const ready = useRef(null);
   const messageFor = (failure) => failure.status === 429 ? 'limited' : failure.message === 'invalid_credentials' ? 'invalid' : failure.message === 'invalid_filters' ? 'filtersError' : 'error';
-  const filters = { search, status, city, phone, phoneType, sortBy: 'created_at', sortDirection: 'desc' };
+  const filters = { status, city, phone, phoneType, sortBy: 'created_at', sortDirection: 'desc' };
   const queryKey = new URLSearchParams({ ...filters, page: String(page), pageSize: String(pageSize) }).toString();
   const matchesQuery = data?.queryKey === queryKey;
 
@@ -184,14 +182,13 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
     <div className="admin-heading"><div><h1 ref={ready} tabIndex="-1">{c.title}</h1><p>{c.intro}</p></div><div className="admin-actions"><button className="text-link" onClick={() => setRevision((value) => value + 1)} disabled={loading || busy}>{c.refresh}</button><button className="button button-small" onClick={signOut} disabled={busy || !!saving}>{c.logout}</button></div></div>
     <div className="admin-counts">{['total', ...reviewStatuses].map((key) => <article key={key}><span>{c[key]}</span><strong>{data?.counts[key] ?? '—'}</strong></article>)}</div>
     <AdminTransfer language={language} filters={filters} csrfToken={session.csrfToken} onSession={setSession} onImported={() => { setPage(1); setRevision((value) => value + 1); }} disabled={busy || !!saving || loading || !matchesQuery} />
-    <form className="admin-filters" onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(draftSearch.trim()); setPhone(draftPhone.trim()); setRevision((value) => value + 1); }}>
-      <label className="form-field admin-search-field"><span>{c.search}</span><input aria-label={c.search} type="search" value={draftSearch} maxLength="100" onChange={(event) => setDraftSearch(event.target.value)} /></label>
+    <form className="admin-filters" onSubmit={(event) => { event.preventDefault(); setPage(1); setPhone(draftPhone.trim()); setRevision((value) => value + 1); }}>
       <label className="form-field"><span>{c.phone}</span><input aria-label={c.phone} type="search" inputMode="tel" dir="ltr" value={draftPhone} maxLength="24" onChange={(event) => setDraftPhone(event.target.value)} /></label>
       <label className="form-field"><span>{c.city}</span><select aria-label={c.city} value={city} onChange={(event) => { setCity(event.target.value); setPage(1); }}><option value="">{c.allCities}</option>{cityOptions.map((value) => <option key={value} value={value}>{cityLabel(value)}</option>)}</select></label>
       <label className="form-field"><span>{c.device}</span><select aria-label={c.device} value={phoneType} onChange={(event) => { setPhoneType(event.target.value); setPage(1); }}><option value="">{c.allDevices}</option><option value="iphone">iPhone / iOS</option><option value="android">Android</option></select></label>
       <label className="form-field"><span>{c.filter}</span><select aria-label={c.filter} value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="">{c.all}</option>{reviewStatuses.map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></label>
       <label className="form-field"><span>{c.pageSize}</span><select aria-label={c.pageSize} value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}>{courierPageSizes.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-      <div className="admin-filter-actions"><button className="button" type="submit" disabled={busy || !!saving}>{c.searchButton}</button><button className="text-link" type="button" onClick={() => { setDraftSearch(''); setSearch(''); setDraftPhone(''); setPhone(''); setCity(''); setPhoneType(''); setStatus(''); setPage(1); }}>{c.clear}</button></div>
+      <div className="admin-filter-actions"><button className="button" type="submit" disabled={busy || !!saving}>{c.searchButton}</button><button className="text-link" type="button" onClick={() => { setDraftPhone(''); setPhone(''); setCity(''); setPhoneType(''); setStatus(''); setPage(1); }}>{c.clear}</button></div>
     </form>
     {error && <p className="form-error" role="alert">{c[error]}</p>}<p className="admin-notice" role="status">{notice ? c[notice] : loading ? c.loading : ''}</p>
     <div className="admin-table-wrap" aria-busy={loading}><table className="admin-table"><caption className="sr-only">{c.title}</caption><thead><tr>{['id', 'name', 'phone', 'city', 'device', 'ref', 'created', 'status'].map((key) => <th key={key} scope="col">{c[key]}</th>)}</tr></thead><tbody>{matchesQuery && data.items.map((row) => <tr key={row.id}><td className="courier-id"><bdi>{row.id}</bdi></td><td>{row.name}</td><td><bdi>{row.phone}</bdi></td><td>{cityLabel(row.city)}</td><td>{row.phone_type === 'iphone' ? 'iPhone' : 'Android'}</td><td>{row.ref || '—'}</td><td>{dateLabel(row.created_at)}</td><td><select aria-label={`${c.statusFor} ${row.name}`} value={row.status} disabled={loading || !!saving || busy} onChange={(event) => updateStatus(row.id, event.target.value)}>{reviewStatuses.map((value) => <option key={value} value={value}>{c[value]}</option>)}</select>{saving === row.id && <span className="sr-only" role="status">{c.loading}</span>}</td></tr>)}</tbody></table>{!loading && matchesQuery && data.items.length === 0 && <div className="admin-empty"><h2>{c.empty}</h2><p>{c.emptyHint}</p></div>}</div>
