@@ -71,7 +71,7 @@
 .legal-contact { margin-top: 40px; padding-top: 30px; border-top: 1px solid var(--line); }
 .legal-contact p { font-size: .96rem; color: var(--muted); margin-bottom: 12px; }
 .legal-contact a { color: var(--purple); }
-.store-grid { width: min(740px, 100%); display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 36px auto 0; position: relative; z-index: 1; }
+.store-grid { width: min(740px, 100%); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin: 36px auto 0; position: relative; z-index: 1; }
 .store-card { text-align: start; background: #ffffff0c; border: 1px solid #ffffff3d; border-radius: 20px; padding: 25px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 20px 18px; }
 .store-card > .icon { width: 34px; height: 34px; }
 .store-card h3 { font-size: 1.5rem; text-align: start; }
@@ -79,10 +79,10 @@
 .store-card > .button { grid-column: 1 / -1; width: 100%; padding-inline: 15px; font-size: .98rem; gap: 12px; }
 .official-store-card { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 26px 20px 20px; gap: 16px; }
 .official-store-card h3 { text-align: center; }
-.store-badge-link { display: flex; align-items: center; justify-content: center; min-height: 100px; padding: 10px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
+.store-badge-link { display: flex; align-items: center; justify-content: center; width: 100%; max-width: 227px; min-width: 0; min-height: 100px; padding: 10px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
 .official-store-badge { display: block; object-fit: contain; flex-shrink: 0; }
-.badge-apple { width: 180px; height: 60px; }
-.badge-play { width: 207px; height: 80px; }
+.badge-apple { width: 180px; height: auto; aspect-ratio: 3; }
+.badge-play { width: 207px; height: auto; aspect-ratio: 207 / 80; }
 .store-link-message { min-height: 28px; margin-top: 20px; color: #ede3f5; font-size: .92rem; }
 
 /* The original screen images retain their supplied light appearance. */

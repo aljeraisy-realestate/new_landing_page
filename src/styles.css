@@ -48,7 +48,7 @@ h3 { font-size: 1.45rem; letter-spacing: -.025em; }
 .skip-link:focus { transform: translateY(0); }
 .header { position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 1px solid #68318e0c; }
 .nav-bar { min-height: 92px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 20px; }
-.nav-bar > .brand { grid-column: 1; grid-row: 1; justify-self: start; }
+.nav-identity { grid-column: 1; grid-row: 1; justify-self: start; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand { display: inline-flex; align-items: center; gap: 3px; color: var(--purple); flex-shrink: 0; direction: ltr; }
 .brand > span { font-size: 2.75rem; line-height: 1; letter-spacing: -.08em; font-weight: 800; padding-top: 8px; }
 .brand-dot { color: var(--lavender); }
@@ -92,8 +92,8 @@ h1 > span { display: block; }
 .stage-orbit { position: absolute; width: 490px; height: 490px; border-radius: 50%; background: #e2d1ef; top: 86px; left: 9%; }
 .stage-orbit::after { content: ''; position: absolute; inset: 20px; border: 1px solid #f6f0fa; border-radius: inherit; }
 .ribbon-line { position: absolute; width: 610px; top: 40px; left: -22px; color: #9d72ba; opacity: .65; }
-.phone { padding: 6px; background: #fff; border: 1px solid #cfc4d6; border-radius: 35px; position: relative; box-shadow: 0 24px 46px -24px #38204765, 0 0 0 3px #ffffffb3; width: 240px; aspect-ratio: 390 / 825; }
-.phone-scroll { height: 100%; overflow: auto; overscroll-behavior: contain; border-radius: 29px; scrollbar-width: none; background: #fff; }
+.phone { padding: 6px; background: #fff; border: 1px solid #cfc4d6; border-radius: 35px; position: relative; overflow: hidden; box-shadow: 0 24px 46px -24px #38204765, 0 0 0 3px #ffffffb3; width: 240px; aspect-ratio: 390 / 825; }
+.phone-scroll { position: absolute; inset: var(--phone-inset, 6px); overflow: auto; overscroll-behavior: contain; border-radius: 29px; scrollbar-width: none; background: #fff; }
 .phone-scroll::-webkit-scrollbar { display: none; }
 .phone img { width: 100%; display: block; }
 .phone-open { position: absolute; bottom: 13px; right: 12px; border-radius: 50%; width: 37px; height: 37px; display: grid; place-items: center; background: #fff; color: var(--purple); border: 1px solid #ddd0e7; box-shadow: 0 3px 12px #38204718; }
@@ -344,7 +344,7 @@ h1 > span { display: block; }
   .navigation { display: none; position: absolute; top: 100%; inset-inline: 0; width: 100%; max-height: calc(100dvh - 78px); overflow-y: auto; overscroll-behavior: contain; padding: 16px 22px 22px; background: var(--paper); border-bottom: 1px solid var(--line); box-shadow: 0 18px 20px #3820470a; }
   .navigation.is-open { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
   .navigation > a { padding: 15px 10px; font-size: 1.1rem; }
-  .hero-grid { grid-template-columns: 1fr; min-height: auto; }
+  .hero-grid { grid-template-columns: minmax(0, 1fr); min-height: auto; }
   .hero-copy { padding-block: 48px 8px; text-align: center; }
   .origin { justify-content: center; font-size: .87rem; margin-bottom: 23px; }
   h1 { font-size: clamp(3.75rem, 10.7vw, 5.6rem); margin-inline-start: 0; line-height: 1.02; }
@@ -354,17 +354,20 @@ h1 > span { display: block; }
   .occasion-picker { justify-content: center; gap: 8px; margin-top: 28px; }
   .occasion-picker button { font-size: .9rem; padding: 10px 13px 7px; }
   .occasion-idea { margin: 12px auto 0; max-width: 400px; font-size: .85rem; min-height: 2.8em; }
-  .hero-stage { transform: none; width: 510px; height: 625px; justify-self: center; margin: 0; left: auto; }
+  .hero-stage { transform: none; width: 100%; max-width: 510px; height: auto; aspect-ratio: 510 / 625; justify-self: center; margin: 0; left: auto; isolation: isolate; }
   [dir='rtl'] .hero-stage { transform: none; transform-origin: center; left: auto; margin: 0; }
-  .hero-phone-main { left: 25px; top: 29px; width: 247px; }
-  .hero-phone-back { top: 84px; left: 257px; width: 216px; }
-  .stage-orbit { left: 23px; top: 75px; width: 445px; height: 445px; }
-  .delivery-note { top: 410px; left: 120px; min-width: 290px; }
-  .hero-handwritten { top: 530px; left: 105px; font-size: 1rem; }
-  .stage-caption { top: 589px; left: 165px; font-size: .7rem; }
-  .spark-one { right: 19px; top: 15px; font-size: 60px; }
-  .spark-two { left: 9px; top: 400px; }
-  .ribbon-line { top: 15px; width: 550px; }
+  .hero-phone-main { left: 4.9%; top: 4.64%; width: 48.43%; }
+  .hero-phone-back { top: 13.44%; left: 50.39%; width: 42.35%; }
+  .stage-orbit { left: 4.5%; top: 12%; width: 87.25%; height: auto; aspect-ratio: 1; }
+  .delivery-note { top: 65.6%; left: 10%; width: 80%; min-width: 0; gap: 8px; padding: 10px; }
+  .delivery-note strong { font-size: clamp(.78rem, 2.8vw, 1rem); }
+  .note-icon { padding: 8px; }
+  .hero-handwritten { top: 85%; left: 12%; width: 62%; font-size: clamp(.8rem, 2.6vw, 1rem); }
+  .hero-handwritten > svg { width: 55px; right: -50px; }
+  .stage-caption { top: 94%; left: 20%; font-size: .7rem; }
+  .spark-one { right: 3.7%; top: 2.4%; font-size: clamp(32px, 10vw, 60px); }
+  .spark-two { left: 1.8%; top: 64%; font-size: clamp(26px, 8vw, 45px); }
+  .ribbon-line { top: 2.4%; left: -4%; width: 108%; }
   .ribbon-items { min-height: 100px; display: grid; grid-template-columns: 1fr 1fr; padding-block: 18px; gap: 16px 20px; }
   .ribbon-items > span { justify-content: center; font-size: .91rem; gap: 10px; }
   .section-space { padding-block: 70px; }
@@ -386,11 +389,11 @@ h1 > span { display: block; }
   .gallery-menu button > .icon { display: none; }
   .gallery-tab-icon > .icon { width: 17px; height: 17px; }
   .gallery-menu button[aria-selected='true'] { border-color: var(--purple); }
-  .gallery-panel { grid-template-columns: 1fr 1fr; gap: 23px; padding: 30px 24px; min-height: 450px; }
-  .gallery-phone { width: 200px; height: 405px; border-radius: 29px; padding: 5px; }
+  .gallery-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 23px; padding: 30px 24px; min-height: 450px; }
+  .gallery-phone { width: min(200px, 100%); height: auto; aspect-ratio: 390 / 825; border-radius: 29px; padding: 5px; --phone-inset: 5px; }
   .gallery-phone .phone-scroll { border-radius: 23px; }
   .gallery-star { left: -10px; font-size: 100px; }
-  .gallery-details { padding: 0; }
+  .gallery-details { padding: 0; min-width: 0; overflow-wrap: anywhere; }
   .gallery-details h3 { font-size: 1.4rem; }
   .gallery-details > p { font-size: .98rem; }
   .gallery-details .text-link { font-size: .9rem; gap: 5px; }
@@ -439,11 +442,10 @@ h1 > span { display: block; }
 @media (max-width: 480px) {
   .nav-bar { gap: 8px; }
   .nav-actions { gap: 6px; }
-  .nav-bar > .brand > span { font-size: 2.1rem; }
-  .nav-bar > .brand > svg { width: 27px; height: 33px; }
+  .nav-identity { gap: 6px; }
+  .nav-identity > .brand > span { font-size: 2.1rem; }
+  .nav-identity > .brand > svg { width: 27px; height: 33px; }
   .language-button { font-size: .88rem; min-width: 56px; }
-  .hero-stage { height: 510px; transform: scale(.8); transform-origin: center top; margin-bottom: -20px; }
-  [dir='rtl'] .hero-stage { transform: scale(.8); transform-origin: center top; }
   .hero-actions { flex-direction: column; gap: 8px; }
   .hero-actions .button { min-height: 55px; }
   .occasion-picker { margin-top: 23px; }
@@ -451,7 +453,7 @@ h1 > span { display: block; }
   .occasion-picker > button .icon { width: 16px; height: 16px; }
   .origin { font-size: .81rem; gap: 7px; }
   .gallery-panel { grid-template-columns: 1fr; padding: 33px 27px 28px; }
-  .gallery-phone { width: 220px; height: 445px; }
+  .gallery-phone { width: min(220px, 100%); height: auto; }
   .gallery-phone-wrap { margin-bottom: 7px; }
   .gallery-star { left: -5px; }
   .gallery-details h3 { font-size: 1.65rem; }
@@ -476,8 +478,6 @@ h1 > span { display: block; }
   .shell { width: calc(100% - 32px); }
   h1 { font-size: 3.35rem; }
   .hero-intro { font-size: 1rem; }
-  .hero-stage { transform: scale(.71); height: 450px; }
-  [dir='rtl'] .hero-stage { transform: scale(.71); }
   [dir='rtl'] h1 { font-size: 3.35rem; }
   .occasion-picker { gap: 5px; }
   .occasion-picker button { font-size: .76rem; padding-inline: 8px; }

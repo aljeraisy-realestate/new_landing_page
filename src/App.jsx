@@ -121,7 +121,10 @@ export default function App() {
     <a className="skip-link" href="#main">{copy.skip}</a>
     <header className="header" id="top">
       <div className="shell nav-bar">
-        <Brand language={language} />
+        <div className="nav-identity">
+          <button className="menu-button round-button" id="mobile-menu-button" aria-expanded={menuOpen} aria-controls="main-navigation" aria-label={menuOpen ? copy.closeMenu : copy.menu} onClick={() => setMenuOpen(!menuOpen)}><Icon name={menuOpen ? 'close' : 'menu'} /></button>
+          <Brand language={language} />
+        </div>
         <nav id="main-navigation" className={`navigation${menuOpen ? ' is-open' : ''}`} aria-label={ar ? 'القائمة الرئيسية' : 'Main navigation'}>
           {copy.nav.map((label, index) => <a key={navIds[index]} href={pageHref('/', language, navIds[index])} onClick={() => setMenuOpen(false)}>{label}</a>)}
           <a href={pageHref('/about', language)} aria-current={page === 'about' ? 'page' : undefined}>{pageCopy.about}</a>
@@ -129,7 +132,6 @@ export default function App() {
         </nav>
         <div className="nav-actions">
           <a className="button button-small" href={pageHref('/', language, 'get-giftly')}>{pageCopy.download}<Icon name="diagonal" /></a>
-          <button className="menu-button round-button" id="mobile-menu-button" aria-expanded={menuOpen} aria-controls="main-navigation" aria-label={menuOpen ? copy.closeMenu : copy.menu} onClick={() => setMenuOpen(!menuOpen)}><Icon name={menuOpen ? 'close' : 'menu'} /></button>
           <div className="site-preferences" role="group" aria-label={ar ? 'اللغة والمظهر' : 'Language and appearance'}>
             <button className="language-button" onClick={switchLanguage} lang={ar ? 'en' : 'ar'} dir={ar ? 'ltr' : 'rtl'} aria-label={ar ? 'Switch to English' : 'التبديل إلى العربية'}>{ar ? 'English' : 'العربية'}</button>
             <button className="theme-button round-button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-pressed={theme === 'dark'} aria-label={theme === 'dark' ? pageCopy.light : pageCopy.dark} title={theme === 'dark' ? pageCopy.light : pageCopy.dark}><Icon name={theme === 'dark' ? 'sun' : 'moon'} /></button>
