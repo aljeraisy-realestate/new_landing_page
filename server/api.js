@@ -3,6 +3,7 @@ import { reviewStatuses, validateCourier } from '../shared/courier.js';
 import { hash } from './store.js';
 import { createAdminAuth } from './admin-auth.js';
 import { CSV_MAX_BYTES, createCourierCsv, parseCourierCsv } from '../shared/courier-csv.js';
+import { normalizeCourierFilters } from '../shared/courier-filters.js';
 
 export class HttpError extends Error {
   constructor(status, code) { super(code); this.status = status; }
@@ -129,18 +130,17 @@ export function createApi({ store, origins, secureCookies, now = Date.now, cooki
           return true;
         }
         if (['/api/admin/couriers', '/api/admin/couriers/export'].includes(url.pathname) && method === 'GET') {
-          const search = (url.searchParams.get('search') || '').trim();
-          const status = url.searchParams.get('status') || '';
-          const page = Number(url.searchParams.get('page') || '1');
-          if (search.length > 100 || (status && !reviewStatuses.includes(status)) || !Number.isInteger(page) || page < 1 || page > 100000) throw new HttpError(400, 'invalid_filters');
+          let filters;
+          try { filters = normalizeCourierFilters(Object.fromEntries(url.searchParams)); }
+          catch { throw new HttpError(400, 'invalid_filters'); }
           if (url.pathname.endsWith('/export')) {
             limited(`login:export:${address}`, 20, 15 * 60 * 1000);
-            const rows = store.exportCouriers({ search, status });
+            const rows = store.exportCouriers(filters);
             if (rows.length > 10000) throw new HttpError(422, 'export_too_many_rows');
             json(response, { csv: createCourierCsv(rows), count: rows.length });
             return true;
           }
-          json(response, store.list({ search, status, page }));
+          json(response, store.list(filters));
           return true;
         }
         const match = url.pathname.match(/^\/api\/admin\/couriers\/([1-9]\d{0,15})$/);

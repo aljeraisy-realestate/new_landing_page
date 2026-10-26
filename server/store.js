@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { cities } from '../shared/courier.js';
 import { migrate } from './migrations.js';
 import { sqliteFile } from './sqlite-directory.js';
+import { canonicalCity, cityAliases, normalizeCourierFilters } from '../shared/courier-filters.js';
 
 export const hash = (value) => createHash('sha256').update(value).digest('hex');
 const csrfFor = (token, binding) => createHmac('sha256', binding).update(token).digest('hex');
@@ -27,11 +28,17 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
     attempts = CASE WHEN reset_at <= ? THEN 1 ELSE MIN(attempts + 1, 10001) END,
     reset_at = CASE WHEN reset_at <= ? THEN excluded.reset_at ELSE reset_at END
     RETURNING attempts, reset_at`)]));
-  const courierQuery = ({ search, status }) => {
+  const courierQuery = (filters) => {
+    const { search, status, city, phone, phoneType, sortBy, sortDirection } = normalizeCourierFilters(filters);
+    const aliases = cityAliases(city);
     const cityIds = `,${cities.filter((city) => city.some((label) => label.toLowerCase().includes(search.toLowerCase()))).map(([id]) => id).join(',')},`;
     const from = 'FROM courier_leads AS leads LEFT JOIN courier_lead_reviews AS reviews ON reviews.lead_id = leads.id';
-    const where = `WHERE (? = '' OR COALESCE(reviews.status, 'new') = ?) AND (? = '' OR instr(lower(leads.name), lower(?)) > 0 OR instr(leads.phone, ?) > 0 OR instr(lower(leads.city), lower(?)) > 0 OR instr(?, ',' || leads.city || ',') > 0)`;
-    return { from, where, params: [status, status, search, search, search, search, cityIds] };
+    const where = `WHERE (? = '' OR COALESCE(reviews.status, 'new') = ?) AND (? = '' OR instr(lower(leads.name), lower(?)) > 0 OR instr(leads.phone, ?) > 0 OR instr(lower(leads.city), lower(?)) > 0 OR instr(?, ',' || leads.city || ',') > 0)
+      AND (? = '' OR lower(leads.city) IN (${aliases.map(() => '?').join(',')}))
+      AND (? = '' OR instr(leads.phone, ?) > 0) AND (? = '' OR leads.phone_type = ?)`;
+    const columns = { id: 'leads.id', name: 'leads.name COLLATE NOCASE', phone: 'leads.phone', city: 'leads.city COLLATE NOCASE', phone_type: 'leads.phone_type', created_at: 'julianday(leads.created_at)', status: "COALESCE(reviews.status, 'new')" };
+    const direction = sortDirection === 'asc' ? 'ASC' : 'DESC';
+    return { from, where, params: [status, status, search, search, search, search, cityIds, city, ...aliases, phone, phone, phoneType, phoneType], order: `${columns[sortBy]} ${direction}, leads.id ${direction}` };
   };
 
   return {
@@ -75,8 +82,8 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     },
     exportCouriers(filters) {
-      const { from, where, params } = courierQuery(filters);
-      return db.prepare(`SELECT leads.*, COALESCE(reviews.status, 'new') AS status, reviews.consent_at ${from} ${where} ORDER BY leads.created_at DESC, leads.id DESC LIMIT 10001`).all(...params);
+      const { from, where, params, order } = courierQuery(filters);
+      return db.prepare(`SELECT leads.*, COALESCE(reviews.status, 'new') AS status, reviews.consent_at ${from} ${where} ORDER BY ${order} LIMIT 10001`).all(...params);
     },
     createSession(token, binding, expiresAt, refreshToken) {
       db.exec('BEGIN IMMEDIATE');
@@ -117,12 +124,17 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     },
     removeSession(token) { db.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').run(hash(token)); },
-    list({ search, status, page }) {
-      const { from, where, params } = courierQuery({ search, status });
+    list(filters) {
+      const normalized = normalizeCourierFilters(filters);
+      const { pageSize } = normalized;
+      const { from, where, params, order } = courierQuery(normalized);
       const total = db.prepare(`SELECT COUNT(*) AS count ${from} ${where}`).get(...params).count;
-      const items = db.prepare(`SELECT leads.*, COALESCE(reviews.status, 'new') AS status, reviews.consent_at ${from} ${where} ORDER BY leads.created_at DESC, leads.id DESC LIMIT 25 OFFSET ?`).all(...params, (page - 1) * 25);
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      const page = Math.min(normalized.page, totalPages);
+      const items = db.prepare(`SELECT leads.*, COALESCE(reviews.status, 'new') AS status, reviews.consent_at ${from} ${where} ORDER BY ${order} LIMIT ? OFFSET ?`).all(...params, pageSize, (page - 1) * pageSize);
       const counts = db.prepare(`SELECT COUNT(*) AS total, COALESCE(SUM(COALESCE(reviews.status, 'new') = 'new'), 0) AS new, COALESCE(SUM(reviews.status = 'contacted'), 0) AS contacted, COALESCE(SUM(reviews.status = 'accepted'), 0) AS accepted ${from}`).get();
-      return { items, total, page, pageSize: 25, counts };
+      const cityOptions = [...new Set(db.prepare('SELECT DISTINCT city FROM courier_leads ORDER BY city COLLATE NOCASE').all().map(({ city }) => canonicalCity(city)))];
+      return { items, total, page, pageSize, totalPages, hasPrevious: page > 1, hasNext: page < totalPages, cityOptions, counts };
     },
     setStatus(id, status) {
       db.exec('BEGIN IMMEDIATE');

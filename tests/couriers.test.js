@@ -55,8 +55,8 @@ test('SQLite survives reopening, preserves duplicate applicants, and binds searc
     const firstPage = store.list(filters);
     const secondPage = store.list({ ...filters, page: 2 });
     assert.equal(firstPage.total, 26);
-    assert.equal(firstPage.items.length, 25);
-    assert.equal(secondPage.items.length, 1);
+    assert.equal(firstPage.items.length, 20);
+    assert.equal(secondPage.items.length, 6);
     assert.ok(!firstPage.items.some((row) => row.id === secondPage.items[0].id));
     assert.equal(store.limit('test-limit', 2, 60000), 0);
     const expiredToken = randomBytes(32).toString('hex');

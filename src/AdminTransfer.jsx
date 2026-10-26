@@ -4,7 +4,7 @@ import { adminJson } from './admin-client.js';
 
 const labels = {
   ar: {
-    title: 'استيراد وتصدير الطلبات', hint: 'التصدير يشمل جميع النتائج المطابقة للبحث والحالة الحالية، حتى 10,000 طلب.',
+    title: 'استيراد وتصدير الطلبات', hint: 'التصدير يشمل جميع النتائج المطابقة للفلاتر والترتيب الحالي، حتى 10,000 طلب.',
     export: 'تصدير CSV', import: 'استيراد CSV', template: 'تحميل قالب الاستيراد', choose: 'اختر ملف CSV', cancel: 'إغلاق',
     fileHint: 'ملف UTF-8 حتى 2 ميغابايت و1,000 صف. استخدم القالب لأسماء الأعمدة. لن تُستبدل أرقام الجوال المسجّلة مسبقاً.',
     confirm: 'أؤكد أن لدي صلاحية استخدام هذه البيانات والتواصل مع أصحابها بشأن الانضمام.',
@@ -20,7 +20,7 @@ const labels = {
     csv_date: 'التاريخ غير صحيح. استخدم YYYY-MM-DD HH:mm:ss بتوقيت UTC أو صيغة ISO تنتهي بـ Z.',
   },
   en: {
-    title: 'Import and export applications', hint: 'Export includes every match for the current search and status, up to 10,000 applications.',
+    title: 'Import and export applications', hint: 'Export includes every match for the current filters and sorting, up to 10,000 applications.',
     export: 'Export CSV', import: 'Import CSV', template: 'Download import template', choose: 'Choose a CSV file', cancel: 'Close',
     fileHint: 'UTF-8 CSV, up to 2 MB and 1,000 rows. Use the template headers. Existing mobile numbers will not be overwritten.',
     confirm: 'I confirm that I am authorized to use these details and contact these applicants about joining.',
@@ -44,7 +44,7 @@ function downloadCsv(csv, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
-export default function AdminTransfer({ language, search, status, csrfToken, onSession, onImported, disabled }) {
+export default function AdminTransfer({ language, filters, csrfToken, onSession, onImported, disabled }) {
   const c = labels[language];
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState(null);
@@ -85,7 +85,7 @@ export default function AdminTransfer({ language, search, status, csrfToken, onS
     operation.current = true; setBusy('export'); setError(''); setResult(null);
     const controller = new AbortController(); request.current = controller;
     try {
-      const query = new URLSearchParams({ search, status });
+      const query = new URLSearchParams(filters);
       const value = await adminJson(`/couriers/export?${query}`, { signal: controller.signal }, onSession);
       if (!alive.current) return;
       if (typeof value.csv !== 'string' || !Number.isInteger(value.count)) throw new Error('invalid_response');

@@ -145,7 +145,7 @@ An existing version 1 or 2 database is migrated to version 3 when you next start
 
 ## Admin
 
-The management dashboard supports Arabic/English, both themes, password sign-in, automatic session renewal, registration counts, search by name/phone/city, referral display, status filters, 25-row pagination, saved statuses **New / Contacted / Accepted**, and CSV import/export. Listing and transfer require authentication; there is no deletion endpoint. Missing/invalid credentials or signing secret leave sign-in locked with setup instructions; an invalid/missing `ADMIN_PATH` prevents server startup.
+The management dashboard supports Arabic/English, both themes, password sign-in, automatic session renewal, registration counts, courier IDs, general search, dedicated city/mobile-number/device/status filters, and CSV import/export. Pagination starts at **20 records per page**, with **50** and **100** options and a visible record range. Sorting supports ID, name, mobile number, city, device, registration date and review status, in ascending or descending order. Every sort uses the ID as a stable tie-breaker. Changing filters, sorting or page size resets to page one; the server clamps pages that no longer exist. Previous/Next are disabled at the boundaries and while results are pending. Saved review statuses remain **New / Contacted / Accepted**. Listing and transfer require authentication; there is no deletion endpoint. Missing/invalid credentials or signing secret leave sign-in locked with setup instructions; an invalid/missing `ADMIN_PATH` prevents server startup.
 
 Administration has its own internal HTML document (`admin/index.html`), React entry (`src/admin-main.jsx`), and responsive layout (`src/AdminApp.jsx`). Those filenames are not public page routes. It does not render public navigation, footer or marketing pages. The public app does not import management components/authentication code. Visiting the configured prefix inspects the current session and selects its `/login` or `/couriers` subpage. The header keeps language/theme controls at the outer edge for each reading direction.
 
@@ -159,8 +159,8 @@ Private routes:
 | `GET <ADMIN_PATH>/api/session` | Inspect access and refresh availability; returns CSRF/expiry metadata, never raw credentials |
 | `POST <ADMIN_PATH>/api/refresh` | Rotate the refresh token and issue a fresh 15-minute access JWT; requires refresh cookie, same origin and CSRF |
 | `DELETE <ADMIN_PATH>/api/session` | Sign out; requires session, same origin, and `X-CSRF-Token` |
-| `GET <ADMIN_PATH>/api/couriers?search=&status=&page=1` | List matching applications after sign-in |
-| `GET <ADMIN_PATH>/api/couriers/export?search=&status=` | Return `{csv,count}` for all filtered matches, across pages; maximum 10,000 records |
+| `GET <ADMIN_PATH>/api/couriers?search=&city=&phone=&phoneType=&status=&sortBy=created_at&sortDirection=desc&page=1&pageSize=20` | List applications after sign-in; return items, filtered total, clamped page, page size, total pages, previous/next availability and existing city options |
+| `GET <ADMIN_PATH>/api/couriers/export` with the same filters and sorting | Return `{csv,count}` for every filtered match, across pages; maximum 10,000 records |
 | `POST <ADMIN_PATH>/api/couriers/import` | Validate and atomically import `{csv,confirmed:true}`; requires CSRF and same origin |
 | `PATCH <ADMIN_PATH>/api/couriers/:id` | Set a review status, for example `{ "status": "contacted" }`; requires CSRF and same origin |
 
@@ -168,7 +168,7 @@ Passwords are checked with scrypt and constant-time comparisons. A secret-keyed 
 
 ### CSV transfer
 
-The dashboard exports all matches for the **applied** search and status, rather than just the visible page. Narrow the filters if results exceed 10,000. CSV files use UTF-8 with a BOM, quoted cells and formula escaping; phone values receive a leading apostrophe to retain their zero in spreadsheet tools. The importer understands that prefix.
+The dashboard exports all matches for the **applied** search, city, mobile number, device and status, in the selected order, rather than just the visible page. Known city IDs and their Arabic/English labels are treated as aliases; custom cities also appear in the filter. Mobile-number filtering accepts partial local digits, full Saudi international numbers and Arabic/Persian digits. Narrow the filters if results exceed 10,000. CSV files use UTF-8 with a BOM, quoted cells and formula escaping; phone values receive a leading apostrophe to retain their zero in spreadsheet tools. The importer understands that prefix.
 
 Use **Download import template** to get a blank file. Required headers: `name,phone,city,phone_type`. Optional headers: `id,ref,locale,status,consent_at,created_at,updated_at`. Imported IDs are ignored; SQLite assigns IDs. Device values are `iphone` (or `ios`) and `android`; locale defaults to `ar`, status to `new`. Cities accept known IDs or Arabic/English labels, plus valid custom city names. Dates accept UTC `YYYY-MM-DD HH:mm:ss` with optional three-digit milliseconds, or ISO UTC ending in `Z`; timestamp precision is preserved. Missing creation/update times use server defaults. Missing consent evidence stays null and is never invented.
 
