@@ -1,6 +1,6 @@
 # Giftly landing
 
-A bilingual landing site with a Node/SQLite courier-registration service and protected `/admin` dashboard, built from Giftly's mobile designs and workflow. The original sibling projects are unchanged.
+A bilingual landing site with a Node/SQLite courier-registration service and a separate protected management dashboard, built from Giftly's mobile designs and workflow. Its URL prefix comes only from private runtime `ADMIN_PATH`. The original sibling projects are unchanged.
 
 The site includes occasion selection, an interactive workflow, a screen gallery, a native full-screen image dialog, benefits, FAQs, an iOS/Android download section, and dedicated courier, privacy, terms, and about pages. Arabic is the default, with complete English support and a light/dark theme switch. The original screen images retain their supplied language.
 
@@ -17,9 +17,9 @@ npm ci
 npm run dev
 ```
 
-Development serves the React app and API together at `http://localhost:5173`. Restart any previously running Vite-only server yourself so the new Node service handles registration requests.
+Development serves the React app and API together at `http://localhost:3000`. Port 3000 is fixed for development and production; no `PORT` variable is needed. Restart any previously running server after changing private settings.
 
-If `.env` does not exist, copy `.env.example` to `.env`. If you already have one, add the missing settings without overwriting your store URLs. For admin access set private `ADMIN_USERNAME` (3–100 characters), `ADMIN_PASSWORD` (4–512 characters), and `ADMIN_JWT_SECRET` (exactly 64 random hexadecimal characters, representing 32 cryptographically random bytes). All three are required; there are no default credentials or signing keys. Restart the server after changes. Open `/admin` and sign in with the username and password. Never use `VITE_` prefixes for credentials or the signing secret.
+If `.env` does not exist, copy `.env.example` to `.env`. Otherwise add missing settings without overwriting your store URLs. Set private `ADMIN_PATH` to one lowercase URL segment (3–64 letters/digits/underscores/hyphens, starting with a letter or digit), avoiding reserved public routes. The example is only a suggested value; your actual chosen prefix stays in ignored `.env`. Set `ADMIN_USERNAME` (3–100 characters), `ADMIN_PASSWORD` (4–512 characters), and `ADMIN_JWT_SECRET` (64 random hexadecimal characters / 32 bytes). Restart after changes and open the URL matching `ADMIN_PATH`; append `/login` for sign-in. There are no credential/key fallbacks in code. Never prefix private settings with `VITE_`.
 
 Generate your own signing secret manually with Node, then paste its output into `ADMIN_JWT_SECRET` in your private `.env`:
 
@@ -29,16 +29,31 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 Keep the secret stable across restarts and out of source control. Changing credentials or the signing secret invalidates existing sessions after restart.
 
-For a production build and local preview, set `APP_ORIGIN=http://localhost:3000` in `.env`, then run:
+For a production build and local preview, `APP_ORIGIN` defaults to `http://localhost:3000` when empty. Run:
 
 ```powershell
 npm run build
 npm run start
 ```
 
-The same npm commands work on macOS/Linux. `npm run preview` is an alias for the production Node server. For a public deployment, set `APP_ORIGIN` to the exact HTTPS origin (for example `https://giftly.sa`), serve Node behind an HTTPS reverse proxy, and set `HOST`/`PORT` for that host as needed. The default binding is `127.0.0.1`.
+The same npm commands work on macOS/Linux. `npm run preview` aliases the production Node server. For public deployment, set `APP_ORIGIN` to your exact HTTPS origin (for example `https://giftly.sa`) and use an HTTPS reverse proxy. The normal host binding defaults to `127.0.0.1`; Docker binds `0.0.0.0` inside the container. Port remains 3000.
 
-Dependency declarations use npm's `latest` tag. Keep `package-lock.json` for reproducibility. The JWT update adds [jose 6.2.13](https://www.npmjs.com/package/jose?activeTab=versions), the latest release reported when authored. Its dependency-free lock entry was added from published package metadata without installation; no integrity value was invented. Run `npm ci` manually to install the updated dependencies. No installation, app, build, test, database creation, or migration was run by the agent; SQLite is initialized when you start the server manually.
+## Docker
+
+The multi-stage `Dockerfile` builds both page entries with Node 24 and runs production dependencies as the non-root `node` user. `.env` and local databases are excluded from the build context. Compose reads `.env` at runtime, publishes `3000:3000`, and mounts the persistent `giftly-data` volume at `/app/data` for SQLite. No port variable is required.
+
+After starting Docker Desktop yourself, build and run manually:
+
+```powershell
+docker compose build
+docker compose up -d
+```
+
+Open `http://localhost:3000/ar`; management is at the path stored in `ADMIN_PATH`. To stop the container use `docker compose down`; keep the named volume to preserve registrations. The volume starts separately from your existing local `data/` folder. To carry existing records over, stop the old service, back up its database, and restore the backup into the volume before starting the new service. Do not remove the volume unless you intend to discard its contents.
+
+Only the public store URLs are passed as build arguments; update them and rebuild when needed. Credentials, JWT secret and the private route are supplied only at runtime. A health check verifies the public page on port 3000. See [Docker deployment details](docs/docker.md).
+
+Dependency declarations use npm's `latest` tag. Keep `package-lock.json` for reproducibility. The JWT update adds [jose 6.2.13](https://www.npmjs.com/package/jose?activeTab=versions), the latest release reported when authored. Its dependency-free lock entry was added from published package metadata without installation; no integrity value was invented. Run `npm ci` manually to install the updated dependencies. No dependencies were installed by the agent. SQLite initializes on server startup; see the current verification status below.
 
 Reference metadata inspected on 2026-10-25 reported [React 19.3.1](https://registry.npmjs.org/react/latest) and [Vite 8.3.5](https://www.npmjs.com/package/vite?activeTab=versions). Actual installed versions depend on when you install. Setup follows the [official Vite guide](https://vite.dev/guide/) and [React plugin](https://github.com/vitejs/vite-plugin-react).
 
@@ -51,7 +66,7 @@ VITE_APP_STORE_URL=https://apps.apple.com/...
 VITE_PLAY_STORE_URL=https://play.google.com/...
 ```
 
-The ellipses above are examples, not real app links. Leave values empty until you have the actual links. Only HTTPS URLs on `apps.apple.com` and `play.google.com`, respectively, are accepted. Buttons stay enabled. With no link yet, clicking displays an inline “link will be added soon” message; once configured, the badge opens the actual app page. Header, mobile navigation, footer, and supporting pages link to `/ar#get-giftly` or `/en#get-giftly`.
+The ellipses above are examples, not real app links. Leave values empty until you have the actual links. Only HTTPS URLs on `apps.apple.com` and `play.google.com`, respectively, are accepted. Buttons stay enabled. With no link yet, clicking displays an inline “link will be added soon” message; once configured, the badge opens the actual app page. Header, mobile navigation, and supporting pages link to `/ar#get-giftly` or `/en#get-giftly`.
 
 The download buttons use unmodified official App Store and Google Play badge artwork, including their official icons, stored locally in `public/brands/`. These replace the hand-drawn Apple/Android symbols. Source URLs are recorded in `public/brands/README.txt`; see [Apple's badge guidance](https://developer.apple.com/app-store/marketing/guidelines/) and [Google's brand resources](https://developer.android.com/distribute/marketing-tools/brand-guidelines).
 
@@ -62,7 +77,7 @@ Vite variables are public and are embedded during build. Restart development or 
 - Default on a first visit: Arabic RTL and light theme.
 - The header switches Arabic/English and light/dark on every page.
 - Preferences are saved in `giftly_language` and `giftly_theme` cookies for 365 days, scoped to `/`, with `SameSite=Lax` and `Secure` on HTTPS. No contact information is stored in cookies or local storage.
-- Admin sign-in uses `giftly_admin_access` (a 15-minute JWT) and `giftly_admin_refresh` (a rotating refresh credential), both HttpOnly, SameSite Strict, scoped to `/api/admin`, and Secure when `APP_ORIGIN` is HTTPS. Refresh hashes and session revocation records live in SQLite; raw tokens are never persisted there or in browser storage. Access refreshes shortly before expiry and on tab wake or an expired authenticated request. The refresh deadline is **three days from sign-in**, even after rotation. Sessions survive restarts with the same credentials, signing key, and database. Logout revokes the family immediately; changing credentials/key and restarting invalidates access.
+- Admin sign-in uses `giftly_admin_access` (a 15-minute JWT) and `giftly_admin_refresh` (a rotating refresh credential), both HttpOnly, SameSite Strict, scoped to `<ADMIN_PATH>/api`, and Secure when `APP_ORIGIN` is HTTPS. Refresh hashes and session revocation records live in SQLite; raw tokens are never persisted there or in browser storage. Access refreshes shortly before expiry and on tab wake or an expired authenticated request. The refresh deadline is **three days from sign-in**, even after rotation. Sessions survive restarts with the same credentials, signing key, and database. Logout revokes the family immediately; changing credentials/key and restarting invalidates access.
 - The `/ar` or `/en` path prefix determines the language, taking precedence over cookies. Unprefixed visits use the saved cookie, then Arabic. Old language-query links are accepted for compatibility and immediately rewritten to locale paths, removing the `lang` parameter. Other query parameters and section anchors are retained.
 - Share Arabic: `/ar`.
 - Share English: `/en`.
@@ -79,11 +94,11 @@ Vite variables are public and are embedded during build. Restart development or 
 | `/ar/about` or `/en/about` | Who we are |
 | `/ar/privacy` or `/en/privacy` | Privacy policy |
 | `/ar/terms` or `/en/terms` | Terms and conditions |
-| `/admin` | Standalone administration entry; resolves to sign-in or courier dashboard |
-| `/admin/login` | Dedicated admin sign-in page |
-| `/admin/couriers` | Dedicated authenticated courier dashboard |
+| `<ADMIN_PATH>` | Private management entry; selects sign-in or courier dashboard |
+| `<ADMIN_PATH>/login` | Dedicated management sign-in page |
+| `<ADMIN_PATH>/couriers` | Dedicated authenticated courier dashboard |
 
-The locale-prefixed `/become-courier`, `/who-we-are`, and `/rules` paths are aliases. Unprefixed public routes use the chosen locale, so `/` becomes `/ar` on a first visit and `/privacy` becomes `/ar/privacy`. Admin routes stay unprefixed and use the saved language; `/ar/admin` and `/en/admin` remain supported aliases and normalize to the appropriate admin page. The Node server provides separate public/admin document fallbacks and serves APIs before page routes.
+The locale-prefixed `/become-courier`, `/who-we-are`, and `/rules` paths are public aliases. Unprefixed public routes use the chosen locale, so `/` becomes `/ar` on a first visit. Management uses its configured prefix and saved language. Old `/admin`, `/ar/admin`, `/en/admin` and external `/api/admin` routes return 404 without redirecting or revealing the configured prefix. The Node server is required for management routing; static-host fallback rules do not provide it.
 
 **Run the Node server to use registration and admin.** Deploying only `dist/` to static hosting will not provide SQLite storage or the API. Use a host supporting Node 24+ and a persistent writable disk, with all requests sent to the same service. `public/_redirects` is retained for the frontend-only fallback but does not provide a backend.
 
@@ -116,24 +131,24 @@ An existing version 1 or 2 database is migrated to version 3 when you next start
 
 ## Admin
 
-`/admin` supports Arabic/English, both themes, password sign-in, automatic session renewal, registration counts, search by name/phone/city, referral display, status filters, 25-row pagination, saved statuses **New / Contacted / Accepted**, and CSV import/export. Listing and transfer require admin authentication; there is no deletion endpoint. Missing/invalid admin credentials or signing secret leave the admin area locked with setup instructions.
+The management dashboard supports Arabic/English, both themes, password sign-in, automatic session renewal, registration counts, search by name/phone/city, referral display, status filters, 25-row pagination, saved statuses **New / Contacted / Accepted**, and CSV import/export. Listing and transfer require authentication; there is no deletion endpoint. Missing/invalid credentials or signing secret leave sign-in locked with setup instructions; an invalid/missing `ADMIN_PATH` prevents server startup.
 
-Administration has its own HTML document (`admin/index.html`), React entry (`src/admin-main.jsx`), and responsive layout (`src/AdminApp.jsx`). It does not render the public navigation, footer, download section, or marketing pages. The landing entry does not import admin components or authentication code. `/admin` and direct visits to its subpages inspect the existing session, then select `/admin/login` or `/admin/couriers`; sign-out and session expiry return to sign-in. The admin header keeps language/theme controls at the outer edge for each reading direction. Both applications share only UI primitives, preference helpers, and base styles.
+Administration has its own internal HTML document (`admin/index.html`), React entry (`src/admin-main.jsx`), and responsive layout (`src/AdminApp.jsx`). Those filenames are not public page routes. It does not render public navigation, footer or marketing pages. The public app does not import management components/authentication code. Visiting the configured prefix inspects the current session and selects its `/login` or `/couriers` subpage. The header keeps language/theme controls at the outer edge for each reading direction.
 
-The Vite build includes both documents. Development rewrites admin routes internally to their document; production serves `dist/admin/index.html` for those routes. Rebuild manually before production startup: an old build containing only the landing entry is rejected. Existing JWT access/refresh, CSRF, API authorization, and SQLite behavior remain in place.
+The Vite build includes both documents, hashed asset names, no production source maps, and a private `.vite/manifest.json`. The server uses that manifest to deny direct public access to management-only assets and serves them under the configured prefix. Development also blocks direct management source aliases and routes their imports through the private prefix. The chosen route is derived from the visited URL in browser code and is never compiled into the build. Rebuild after this update: production requires the manifest. Runtime URL changes need a restart but no rebuild. Anyone who opens a page can inspect its delivered HTML/JavaScript; URL privacy complements JWT, CSRF and API authorization rather than replacing them.
 
 Private routes:
 
 | Method and path | Behavior |
 | --- | --- |
-| `POST /api/admin/session` | Sign in with `{ "username": "...", "password": "..." }` |
-| `GET /api/admin/session` | Inspect access and refresh availability; returns CSRF/expiry metadata, never raw credentials |
-| `POST /api/admin/refresh` | Rotate the refresh token and issue a fresh 15-minute access JWT; requires refresh cookie, same origin and CSRF |
-| `DELETE /api/admin/session` | Sign out; requires session, same origin, and `X-CSRF-Token` |
-| `GET /api/admin/couriers?search=&status=&page=1` | List matching applications after sign-in |
-| `GET /api/admin/couriers/export?search=&status=` | Return `{csv,count}` for all filtered matches, across pages; maximum 10,000 records |
-| `POST /api/admin/couriers/import` | Validate and atomically import `{csv,confirmed:true}`; requires CSRF and same origin |
-| `PATCH /api/admin/couriers/:id` | Set a review status, for example `{ "status": "contacted" }`; requires CSRF and same origin |
+| `POST <ADMIN_PATH>/api/session` | Sign in with `{ "username": "...", "password": "..." }` |
+| `GET <ADMIN_PATH>/api/session` | Inspect access and refresh availability; returns CSRF/expiry metadata, never raw credentials |
+| `POST <ADMIN_PATH>/api/refresh` | Rotate the refresh token and issue a fresh 15-minute access JWT; requires refresh cookie, same origin and CSRF |
+| `DELETE <ADMIN_PATH>/api/session` | Sign out; requires session, same origin, and `X-CSRF-Token` |
+| `GET <ADMIN_PATH>/api/couriers?search=&status=&page=1` | List matching applications after sign-in |
+| `GET <ADMIN_PATH>/api/couriers/export?search=&status=` | Return `{csv,count}` for all filtered matches, across pages; maximum 10,000 records |
+| `POST <ADMIN_PATH>/api/couriers/import` | Validate and atomically import `{csv,confirmed:true}`; requires CSRF and same origin |
+| `PATCH <ADMIN_PATH>/api/couriers/:id` | Set a review status, for example `{ "status": "contacted" }`; requires CSRF and same origin |
 
 Passwords are checked with scrypt and constant-time comparisons. A secret-keyed HMAC binds each session to current credentials without exposing a password verifier usable from the database alone. JWT verification restricts algorithm, issuer, audience, subject, token purpose and lifetime, and checks a live SQLite session to enforce revocation. Refresh tokens are random, hashed and single-use; consumed records are retained for replay detection until the session expires. Reuse within five seconds returns a conflict without issuing credentials, allowing concurrent tabs to recheck the shared cookies; later reuse revokes the entire session family. The browser uses Web Locks where available to coordinate rotation across tabs. Origin/CSRF checks protect mutations, including refresh and logout. Rate limits persist in SQLite; the server uses the connection address without trusting forwarded headers, so deployments behind a proxy share the per-IP limits unless that architecture is adapted. Limits per 15 minutes: registration 100 global/20 per address/5 per phone; sign-in 60 global/8 per address; refresh 120 per address.
 
@@ -207,3 +222,5 @@ Product copy is grounded in the mobile request/home/order/calendar screens, `../
 The initial implementation was authored without execution. The development server was subsequently started at the user's request; startup initializes or migrates the configured SQLite database. A browser check then reproduced a blank page caused by the server blocking Vite's optimized React modules under `node_modules/.vite/deps/`. The path guard now permits only those JavaScript/source-map assets during development, with Vite's filesystem restrictions still applied. Other dot directories, private server files, and database paths remain blocked.
 
 The three focused tests in `tests/static-paths.test.js` passed, and the landing page and standalone admin page were verified rendering in the browser after restart. The later CSV update passed 15 focused parser/HTTP/SQLite checks and a production build of both entries; its export button and import controls were also checked in the browser. No dependencies were installed. The full suite remains unrun: automatic approval review rejected that broader run because of the earlier no-tests instruction. Run it only with explicit approval, then check remaining registration, session, locale/theme and download behavior before deployment.
+
+The subsequent private-route/Docker update passed 10 focused route/client/cookie-scope checks, a local production build, a build-output privacy scan and `docker compose config --quiet`. Read-only review found and resolved an asset path-normalization bypass. Docker's Linux engine was unavailable, so no image was built or container verified. The development server remains stopped, as requested; no server/container was started for this update.

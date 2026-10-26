@@ -1,0 +1,24 @@
+services:
+  giftly:
+    build:
+      context: .
+      args:
+        VITE_APP_STORE_URL: ${VITE_APP_STORE_URL:-}
+        VITE_PLAY_STORE_URL: ${VITE_PLAY_STORE_URL:-}
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
+      SQLITE_PATH: /app/data/couriers.sqlite
+    volumes:
+      - giftly-data:/app/data
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 10s
+
+volumes:
+  giftly-data:

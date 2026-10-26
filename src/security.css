@@ -1,0 +1,54 @@
+.security { background: var(--paper); }
+.security-layout { display: grid; grid-template-columns: 1.05fr 1fr; gap: 95px; align-items: center; }
+.security-emblem { width: 62px; height: 62px; border-radius: 20px; background: var(--lilac); color: var(--purple); display: grid; place-items: center; margin-bottom: 29px; }
+.security-emblem > .icon { width: 32px; height: 32px; }
+.security-intro { color: var(--muted); font-size: 1.1rem; margin-top: 25px; max-width: 460px; }
+.security-reasons { display: grid; gap: 14px; list-style: none; padding: 0; margin-block: 28px 22px; }
+.security-reasons li { display: flex; align-items: center; gap: 11px; font-size: 1rem; font-weight: 500; }
+.security-reasons .icon { width: 19px; height: 19px; color: var(--purple); }
+.security-copy > .text-link { color: var(--purple); }
+[dir='rtl'] .security-copy > .text-link > .icon { transform: rotate(180deg); }
+.security-availability { color: var(--muted); font-size: .8rem; line-height: 1.8; margin-top: 18px; max-width: 430px; }
+.security-custody { background: var(--surface); border: 1px solid var(--line); border-radius: 27px; padding: 35px; }
+.security-custody-heading { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 23px; margin-bottom: 25px; color: var(--purple); }
+.security-custody-heading > span { font-size: 2.2rem; line-height: 1; letter-spacing: -.08em; font-weight: 800; }
+.security-custody-heading > .icon { width: 25px; height: 25px; }
+.security-custody > h3 { font-size: 1.35rem; margin-bottom: 29px; }
+.security-flow { list-style: none; padding: 0; margin: 0; }
+.security-flow > li { display: flex; align-items: start; gap: 20px; position: relative; padding-bottom: 29px; }
+.security-flow > li:not(:last-child)::before { content: ''; position: absolute; inset-inline-start: 22px; top: 45px; bottom: 0; border-inline-start: 1px dashed #b295ca; }
+.security-flow > li:last-child { padding-bottom: 0; }
+.security-stage-icon { display: grid; place-items: center; width: 45px; height: 45px; border: 1px solid var(--line); border-radius: 50%; background: var(--paper); color: var(--purple); flex-shrink: 0; z-index: 1; }
+.security-stage-icon > .icon { width: 22px; height: 22px; }
+.security-flow > li:nth-child(2) .security-stage-icon { background: var(--purple); color: var(--paper); border-color: var(--purple); }
+.security-stage-number { display: block; font-size: .74rem; color: var(--muted); line-height: 1; margin-bottom: 9px; direction: ltr; text-align: start; }
+[dir='rtl'] .security-stage-number { text-align: right; }
+.security-flow h4 { margin: 0 0 9px; font-size: 1.1rem; font-weight: 700; line-height: 1.4; }
+.security-flow p { color: var(--muted); font-size: .96rem; line-height: 1.75; max-width: 300px; }
+.security-release-rule { background: var(--lilac); color: var(--purple); border-radius: 14px; padding: 18px; margin-top: 29px; display: flex; align-items: center; gap: 12px; }
+.security-release-rule strong { font-size: .96rem; line-height: 1.7; font-weight: 700; }
+.security-release-rule > .icon { width: 25px; height: 25px; }
+@media (max-width: 1200px) { .security-layout { gap: 55px; } }
+@media (max-width: 1000px) {
+  .security-layout { gap: 35px; }
+  .security-custody { padding: 27px; }
+  .security-flow > li { gap: 15px; }
+  .security-flow h4 { font-size: 1.03rem; }
+}
+@media (max-width: 760px) {
+  .security-layout { grid-template-columns: 1fr; gap: 35px; }
+  .security-emblem { width: 54px; height: 54px; border-radius: 17px; margin-bottom: 24px; }
+  .security-intro { font-size: 1.04rem; max-width: 100%; margin-top: 22px; }
+  .security-reasons { margin-block: 24px 18px; gap: 13px; }
+  .security-reasons li { font-size: .95rem; }
+  .security-custody { width: 100%; max-width: 520px; margin-inline: auto; padding: 30px; }
+  .security-flow p { max-width: none; }
+}
+@media (max-width: 400px) {
+  .security-custody { padding: 25px 20px; border-radius: 22px; }
+  .security-flow > li { gap: 13px; }
+  .security-flow h4 { font-size: 1rem; }
+  .security-flow p { font-size: .9rem; }
+  .security-release-rule { padding: 15px; gap: 10px; }
+  .security-release-rule strong { font-size: .88rem; }
+}
