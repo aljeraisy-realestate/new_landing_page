@@ -17,7 +17,7 @@ const labels = {
     empty: 'لا توجد طلبات مطابقة.', emptyHint: 'ستظهر هنا طلبات المندوبين بعد إرسال نموذج الانضمام.',
     previous: 'السابق', next: 'التالي', page: 'الصفحة', of: 'من', results: 'نتيجة',
     saved: 'تم حفظ الحالة.', statusFor: 'حالة طلب', retry: 'حاول مرة أخرى',
-    id: 'المعرّف', allCities: 'كل المدن', allDevices: 'كل الأجهزة', sortDirection: 'اتجاه الترتيب', asc: 'تصاعدي', desc: 'تنازلي', pageSize: 'عدد السجلات في الصفحة', clear: 'مسح الفلاتر', filtersError: 'تحقق من رقم الجوال والفلاتر ثم حاول مجدداً.',
+    id: 'المعرّف', allCities: 'كل المدن', allDevices: 'كل الأجهزة', pageSize: 'عدد السجلات في الصفحة', clear: 'مسح الفلاتر', filtersError: 'تحقق من رقم الجوال والفلاتر ثم حاول مجدداً.',
   },
   en: {
     title: 'Courier applications', intro: 'Review registered applicants and keep track of follow-up in one place.',
@@ -31,7 +31,7 @@ const labels = {
     empty: 'No matching applications.', emptyHint: 'Submitted courier applications will appear here.',
     previous: 'Previous', next: 'Next', page: 'Page', of: 'of', results: 'results',
     saved: 'Status saved.', statusFor: 'Application status for', retry: 'Try again',
-    id: 'ID', allCities: 'All cities', allDevices: 'All devices', sortDirection: 'Sort direction', asc: 'Ascending', desc: 'Descending', pageSize: 'Records per page', clear: 'Clear filters', filtersError: 'Check the mobile number and filters, then try again.',
+    id: 'ID', allCities: 'All cities', allDevices: 'All devices', pageSize: 'Records per page', clear: 'Clear filters', filtersError: 'Check the mobile number and filters, then try again.',
   },
 };
 
@@ -51,7 +51,6 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
   const [draftPhone, setDraftPhone] = useState('');
   const [phone, setPhone] = useState('');
   const [phoneType, setPhoneType] = useState('');
-  const [sortDirection, setSortDirection] = useState('desc');
   const [pageSize, setPageSize] = useState(20);
   const [cityOptions, setCityOptions] = useState([]);
   const [page, setPage] = useState(1);
@@ -63,7 +62,7 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
   const savingRef = useRef(false);
   const ready = useRef(null);
   const messageFor = (failure) => failure.status === 429 ? 'limited' : failure.message === 'invalid_credentials' ? 'invalid' : failure.message === 'invalid_filters' ? 'filtersError' : 'error';
-  const filters = { search, status, city, phone, phoneType, sortBy: 'created_at', sortDirection };
+  const filters = { search, status, city, phone, phoneType, sortBy: 'created_at', sortDirection: 'desc' };
   const queryKey = new URLSearchParams({ ...filters, page: String(page), pageSize: String(pageSize) }).toString();
   const matchesQuery = data?.queryKey === queryKey;
 
@@ -191,13 +190,12 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
       <label className="form-field"><span>{c.city}</span><select aria-label={c.city} value={city} onChange={(event) => { setCity(event.target.value); setPage(1); }}><option value="">{c.allCities}</option>{cityOptions.map((value) => <option key={value} value={value}>{cityLabel(value)}</option>)}</select></label>
       <label className="form-field"><span>{c.device}</span><select aria-label={c.device} value={phoneType} onChange={(event) => { setPhoneType(event.target.value); setPage(1); }}><option value="">{c.allDevices}</option><option value="iphone">iPhone / iOS</option><option value="android">Android</option></select></label>
       <label className="form-field"><span>{c.filter}</span><select aria-label={c.filter} value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="">{c.all}</option>{reviewStatuses.map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></label>
-      <label className="form-field"><span>{c.sortDirection}</span><select aria-label={c.sortDirection} value={sortDirection} onChange={(event) => { setSortDirection(event.target.value); setPage(1); }}><option value="asc">{c.asc}</option><option value="desc">{c.desc}</option></select></label>
+      <label className="form-field"><span>{c.pageSize}</span><select aria-label={c.pageSize} value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}>{courierPageSizes.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
       <div className="admin-filter-actions"><button className="button" type="submit" disabled={busy || !!saving}>{c.searchButton}</button><button className="text-link" type="button" onClick={() => { setDraftSearch(''); setSearch(''); setDraftPhone(''); setPhone(''); setCity(''); setPhoneType(''); setStatus(''); setPage(1); }}>{c.clear}</button></div>
     </form>
     {error && <p className="form-error" role="alert">{c[error]}</p>}<p className="admin-notice" role="status">{notice ? c[notice] : loading ? c.loading : ''}</p>
     <div className="admin-table-wrap" aria-busy={loading}><table className="admin-table"><caption className="sr-only">{c.title}</caption><thead><tr>{['id', 'name', 'phone', 'city', 'device', 'ref', 'created', 'status'].map((key) => <th key={key} scope="col">{c[key]}</th>)}</tr></thead><tbody>{matchesQuery && data.items.map((row) => <tr key={row.id}><td className="courier-id"><bdi>{row.id}</bdi></td><td>{row.name}</td><td><bdi>{row.phone}</bdi></td><td>{cityLabel(row.city)}</td><td>{row.phone_type === 'iphone' ? 'iPhone' : 'Android'}</td><td>{row.ref || '—'}</td><td>{dateLabel(row.created_at)}</td><td><select aria-label={`${c.statusFor} ${row.name}`} value={row.status} disabled={loading || !!saving || busy} onChange={(event) => updateStatus(row.id, event.target.value)}>{reviewStatuses.map((value) => <option key={value} value={value}>{c[value]}</option>)}</select>{saving === row.id && <span className="sr-only" role="status">{c.loading}</span>}</td></tr>)}</tbody></table>{!loading && matchesQuery && data.items.length === 0 && <div className="admin-empty"><h2>{c.empty}</h2><p>{c.emptyHint}</p></div>}</div>
     <div className="admin-pagination">
-      <label className="form-field admin-page-size"><span>{c.pageSize}</span><select aria-label={c.pageSize} value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}>{courierPageSizes.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
       <span aria-live="polite">{firstRecord}–{lastRecord} {c.of} {matchesQuery ? data.total : '—'} {c.results} · {c.page} {page} {c.of} {lastPage}</span>
       <div className="admin-pagination-buttons"><button className="text-link pagination-previous" disabled={paginationBusy || !data?.hasPrevious} onClick={() => setPage((value) => Math.max(1, value - 1))}><Icon name="arrow" />{c.previous}</button><button className="text-link pagination-next" disabled={paginationBusy || !data?.hasNext} onClick={() => setPage((value) => Math.min(lastPage, value + 1))}>{c.next}<Icon name="arrow" /></button></div>
     </div>
