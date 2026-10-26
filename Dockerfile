@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts
 
 FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
-ENV NODE_ENV=production HOST=0.0.0.0
+ENV NODE_ENV=production HOST=0.0.0.0 SQLITE_DATA_DIR=/app/data
 COPY --chown=node:node package.json ./
 COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist

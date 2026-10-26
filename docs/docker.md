@@ -29,9 +29,11 @@ The Dockerfile uses the official Node 24 Debian slim image, separates build/runt
 
 ## Persistent registrations
 
-Compose mounts the `giftly-data` named volume at `/app/data` and sets SQLite to `/app/data/couriers.sqlite`. Ordinary rebuilds and `docker compose down` retain that volume. Removing volumes deletes the stored registrations; do not use `down -v` to stop a service you intend to keep.
+Compose mounts the `giftly-data` named volume at `/app/data` and sets `SQLITE_DATA_DIR=/app/data`, using the same folder variable as the original landing. An existing `couriers.sqlite` or original nested Wrangler database is reused automatically. Fresh volumes create `/app/data/couriers.sqlite`. Ordinary rebuilds and `docker compose down` retain that volume. Removing volumes deletes the stored registrations; do not use `down -v` to stop a service you intend to keep.
 
-This named volume is separate from the development `data/` folder. To migrate existing data, stop the old service and use SQLite backup tooling or a consistent copy taken while it is stopped, then restore that backup into the container volume before starting the new service. Keep a separate backup. The image build never copies a local database or `.env` into image layers.
+This named volume is separate from the development `data/` folder. To migrate existing data, stop the old service and use SQLite backup tooling or a consistent copy taken while it is stopped, then restore that backup into the container volume before starting the new service. Keep the original folder layout when restoring Wrangler persistence, and keep a separate backup. Do not run both app versions against the same live folder. Remove obsolete `SQLITE_PATH` overrides, or ensure an explicit file is inside `/app/data`. The image build never copies a local database, Wrangler state, or `.env` into image layers.
+
+The runtime user is `node` (UID/GID 1000 in this image). When restoring files from the original container, which ran as root, ensure the mounted folder, database and any WAL/SHM files are writable by that user before starting this service.
 
 ## Public store links
 

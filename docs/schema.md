@@ -23,7 +23,7 @@ Base column names, types, default values, nullability, unique phone index, and r
 
 ## Upgrade from the first new-landing schema
 
-Migration code lives in `../server/migrations.js`. It has not been executed by the agent.
+Migration code lives in `../server/migrations.js`. Focused compatibility checks execute it only against temporary test databases.
 
 When the Node server is next started manually, the migration runs transactionally and sets SQLite `user_version` to 3. For a version 1 database:
 
@@ -36,7 +36,13 @@ When the Node server is next started manually, the migration runs transactionall
 
 Upgrading version 2 adds `admin_refresh_tokens` and clears pre-JWT sessions once. Existing courier rows and reviews remain intact. Reopening version 3 preserves valid JWT session families.
 
-If the input already has the reference `courier_leads` table, existing IDs, referral values, records, and unrelated tables remain intact. The app does not import or modify the sibling landing's database; changing `SQLITE_PATH` is an explicit operator decision.
+If the input already has the reference `courier_leads` table, existing IDs, referral values, records, and unrelated tables remain intact. Wrangler's `giftly_migrations` table is also retained. Focused tests initialize a temporary database using copies of the original landing's five Drizzle migrations and confirm its original table definitions and records survive opening and reopening in this app.
+
+## Persistence folder
+
+`SQLITE_DATA_DIR` is the same private runtime folder setting used by the original landing. It defaults to `data` locally and `/app/data` in Docker. Startup recursively inspects `.sqlite`, `.sqlite3`, and `.db` files read-only, recognizes application tables, and opens the sole matching application database. This supports the original Wrangler `v3/d1/miniflare-D1DatabaseObject/<hash>.sqlite` layout as well as the existing flat `couriers.sqlite` layout. Metadata databases are not selected. Empty directories create `couriers.sqlite`; unrelated, unreadable or ambiguous databases cause startup to fail instead of silently replacing data. Symlinks within the persistence directory are rejected.
+
+Optional legacy `SQLITE_PATH` chooses a specific database file; when both variables are set, it must be inside the configured directory. Existing file-only configurations remain supported. To reuse the sibling's data, stop its service, back up the complete persistence directory, remove the old file override and set `SQLITE_DATA_DIR=../landing-page/.wrangler/state`. Then start only the new service. This is a changeover, not a promise of concurrent compatibility between the two servers' authentication and migration behavior. No sibling data is changed until an operator starts this app against that folder.
 
 Before upgrading an existing live database, stop the service and take a backup of its SQLite files. Keep the backup outside public/build directories. To roll back, restore that backup with the previous code; do not manually reduce `user_version` or rely on the retained legacy tables to recreate later edits.
 

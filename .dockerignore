@@ -7,12 +7,15 @@ dist
 *.pem
 *.key
 data
+.wrangler
 *.sqlite
 *.sqlite-*
 *.db
 *.db-*
 **/*.sqlite
 **/*.sqlite-*
+**/*.sqlite3
+**/*.sqlite3-*
 **/*.db
 **/*.db-*
 tests

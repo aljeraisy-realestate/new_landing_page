@@ -17,7 +17,7 @@ export default defineConfig({
   },
   server: {
     fs: {
-      deny: ['.env', '.env.*', '**/*.{crt,pem}', '**/.git/**', '**/data/**', '**/server/**', '**/*.sqlite*', '**/*.db*'],
+      deny: ['.env', '.env.*', '**/*.{crt,pem}', '**/.git/**', '**/.wrangler/**', '**/data/**', '**/server/**', '**/*.sqlite*', '**/*.db*'],
     },
   },
 });

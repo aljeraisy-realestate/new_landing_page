@@ -57,6 +57,20 @@ Dependency declarations use npm's `latest` tag. Keep `package-lock.json` for rep
 
 Reference metadata inspected on 2026-10-25 reported [React 19.3.1](https://registry.npmjs.org/react/latest) and [Vite 8.3.5](https://www.npmjs.com/package/vite?activeTab=versions). Actual installed versions depend on when you install. Setup follows the [official Vite guide](https://vite.dev/guide/) and [React plugin](https://github.com/vitejs/vite-plugin-react).
 
+## SQLite folder and the original landing
+
+The original landing stores SQLite through Wrangler/Miniflare, using `SQLITE_DATA_DIR` for its persistence folder. This app accepts the same setting. Use `SQLITE_DATA_DIR=data` locally; Docker defaults to `/app/data`, keeping the existing persistent volume. Fresh folders create `couriers.sqlite`. A folder containing the original `v3/d1/miniflare-D1DatabaseObject/<hash>.sqlite` layout is detected automatically by its application tables, without choosing Wrangler's metadata database or creating a second empty database.
+
+To reuse the original local data, stop the original app, back up its entire persistence folder, then set this in the new app's private `.env` and remove any old `SQLITE_PATH` line:
+
+```dotenv
+SQLITE_DATA_DIR=../landing-page/.wrangler/state
+```
+
+Paths are relative to this project, or absolute. Only one app should own the database during this changeover. The eight original base tables and existing IDs/records stay intact; separate extension tables support reviews and rotating JWT refresh tokens. Old admin sessions are invalidated on first upgrade, so sign in again. Wrangler's migration history is retained. The Node runtime opens the SQLite file directly; it does not require Wrangler or a remote D1 service.
+
+If several application databases exist in the folder, startup fails with instructions to select one using optional `SQLITE_PATH`. When both settings are present, that explicit file must be inside `SQLITE_DATA_DIR`. Unreadable or unrelated SQLite files fail startup rather than producing an empty dashboard. Existing installations using only `SQLITE_PATH` remain supported. No existing sibling database is automatically imported or modified by configuration changes alone. See [schema compatibility](docs/schema.md).
+
 ## Store links
 
 Copy `.env.example` to `.env` and add published store URLs when available:

@@ -1,19 +1,16 @@
 import { mkdirSync } from 'node:fs';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { dirname } from 'node:path';
 import { createHash, createHmac } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { cities } from '../shared/courier.js';
 import { migrate } from './migrations.js';
+import { sqliteFile } from './sqlite-directory.js';
 
 export const hash = (value) => createHash('sha256').update(value).digest('hex');
 const csrfFor = (token, binding) => createHmac('sha256', binding).update(token).digest('hex');
 
-export function openStore(root, filename) {
-  const file = resolve(root, filename || 'data/couriers.sqlite');
-  for (const directory of ['public', 'dist', 'src', 'node_modules']) {
-    const child = relative(resolve(root, directory), file);
-    if (!child || (!child.startsWith('..') && !isAbsolute(child))) throw new Error('SQLite must be outside publicly served directories.');
-  }
+export function openStore(root, filename, dataDirectory) {
+  const file = sqliteFile(root, filename, dataDirectory);
   mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(file, { enableForeignKeyConstraints: true, enableDoubleQuotedStringLiterals: false });
   db.exec(`

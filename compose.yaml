@@ -13,7 +13,7 @@ services:
       HOST: 0.0.0.0
       NODE_ENV: production
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
-      SQLITE_PATH: /app/data/couriers.sqlite
+      SQLITE_DATA_DIR: /app/data
     volumes:
       - giftly-data:/app/data
     init: true
