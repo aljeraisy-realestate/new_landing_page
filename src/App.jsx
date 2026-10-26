@@ -220,7 +220,7 @@ export default function App() {
         <nav aria-label={ar ? 'روابط التذييل' : 'Footer navigation'}>
           {['about', 'couriers', 'privacy', 'terms'].map((target) => <a key={target} href={pageHref(`/${target}`, language)} aria-current={page === target ? 'page' : undefined}>{pageCopy[target]}</a>)}
         </nav>
-        <a className="back-top" href="#top" aria-label={copy.back}><Icon name="arrow" /></a>
+        <button className="back-top" type="button" aria-label={copy.back} onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); document.querySelector('.header .brand')?.focus({ preventScroll: true }); }}><Icon name="arrow" /></button>
       </div>
       <div className="footer-bottom">
         <div className="footer-company"><p>{pageCopy.company}</p><p>{pageCopy.registration}</p></div>
