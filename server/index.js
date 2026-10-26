@@ -19,7 +19,8 @@ if (!['http:', 'https:'].includes(origin.protocol) || origin.username || origin.
 if (origin.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname)) throw new Error('Use HTTPS for a public APP_ORIGIN.');
 const origins = new Set([origin.origin]);
 if (dev) { origins.add(`http://localhost:${port}`); origins.add(`http://127.0.0.1:${port}`); }
-const store = openStore(root, process.env.SQLITE_PATH, process.env.SQLITE_DATA_DIR);
+const store = openStore(root, process.env.SQLITE_PATH, process.env.SQLITE_DATA_DIR, process.env.SQLITE_REQUIRE_EXISTING === 'true');
+console.log(`SQLite database: ${store.file}`);
 const api = createApi({ store, origins, secureCookies: origin.protocol === 'https:', cookiePath: control.apiBase });
 const dist = resolve(root, 'dist');
 if (!dev && (!existsSync(resolve(dist, 'index.html')) || !existsSync(resolve(dist, 'admin/index.html')))) { store.close(); throw new Error('Build the landing and administration pages with npm run build before npm run start.'); }

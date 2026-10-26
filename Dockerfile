@@ -20,14 +20,14 @@ RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts
 
 FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
-ENV NODE_ENV=production HOST=0.0.0.0 SQLITE_DATA_DIR=/app/data
+ENV NODE_ENV=production HOST=0.0.0.0 SQLITE_DATA_DIR=/data
 COPY --chown=node:node package.json ./
 COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node server ./server
 COPY --chown=node:node shared ./shared
 COPY --chown=node:node db ./db
-RUN mkdir -p /app/data && chown node:node /app/data
+RUN mkdir -p /data && chown node:node /data
 USER node
 EXPOSE 3000
 CMD ["node", "server/index.js"]

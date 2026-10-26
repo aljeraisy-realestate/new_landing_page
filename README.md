@@ -40,7 +40,7 @@ The same npm commands work on macOS/Linux. `npm run preview` aliases the product
 
 ## Docker
 
-The multi-stage `Dockerfile` builds both page entries with Node 24 and runs production dependencies as the non-root `node` user. `.env` and local databases are excluded from the build context. Compose reads `.env` at runtime, publishes `3000:3000`, and mounts the persistent `giftly-data` volume at `/app/data` for SQLite. No port variable is required.
+The multi-stage `Dockerfile` builds both page entries with Node 24 and runs production dependencies as the non-root `node` user. `.env` and local databases are excluded from the build context. Compose reads `.env` at runtime, publishes `3000:3000`, and mounts the persistent `giftly-data` volume at `/data` for SQLite. No port variable is required.
 
 After starting Docker Desktop yourself, build and run manually:
 
@@ -59,7 +59,7 @@ Reference metadata inspected on 2026-10-25 reported [React 19.3.1](https://regis
 
 ## SQLite folder and the original landing
 
-The original landing stores SQLite through Wrangler/Miniflare, using `SQLITE_DATA_DIR` for its persistence folder. This app accepts the same setting. Use `SQLITE_DATA_DIR=data` locally; Docker defaults to `/app/data`, keeping the existing persistent volume. Fresh folders create `couriers.sqlite`. A folder containing the original `v3/d1/miniflare-D1DatabaseObject/<hash>.sqlite` layout is detected automatically by its application tables, without choosing Wrangler's metadata database or creating a second empty database.
+The original landing stores SQLite through Wrangler/Miniflare, using `SQLITE_DATA_DIR` for its persistence folder. This app accepts the same setting. Use `SQLITE_DATA_DIR=data` locally; Docker defaults to `/data` and reuses the original `giftly-data` persistent volume. Fresh folders create `couriers.sqlite`. A folder containing the original `v3/d1/miniflare-D1DatabaseObject/<hash>.sqlite` layout is detected automatically by its application tables, without choosing Wrangler's metadata database or creating a second empty database.
 
 To reuse the original local data, stop the original app, back up its entire persistence folder, then set this in the new app's private `.env` and remove any old `SQLITE_PATH` line:
 
@@ -139,7 +139,7 @@ The server independently validates all fields, requires explicit consent and a m
 
 Registration uses the original landing's **`courier_leads`** schema: integer autoincrement IDs, `name`, unique `phone`, `city`, `phone_type`, optional `ref`, `locale`, and SQLite creation/update timestamps. The optional referral comes from the courier page's `ref` query parameter. Custom city names are saved directly in `city`, as in the original landing. The complete eight-table reference schema is mirrored in `db/schema.sql`; review/consent metadata lives separately in `courier_lead_reviews` so the base lead schema stays compatible. See [schema and upgrade details](docs/schema.md).
 
-The default database is `data/couriers.sqlite`, created on first server start. `SQLITE_PATH` can select a persistent volume path; do not place it under public/build assets. SQLite uses WAL mode; its database and companion files are ignored by Git and denied by development file serving. Back up using SQLite's backup tooling, or stop the service before copying its database files. Keep the data directory private and persistent across deployments.
+Local development defaults to `data/couriers.sqlite`. Docker uses `SQLITE_DATA_DIR=/data` and discovers the existing application database inside the original `giftly-data` volume. Compose and CranL set `SQLITE_REQUIRE_EXISTING=true` to prevent an empty replacement if the original database is missing. Optional `SQLITE_PATH` selects a specific file only when needed; do not place it under public/build assets. SQLite uses WAL mode; its database and companion files are ignored by Git and denied by development file serving. Back up using SQLite's backup tooling, or stop the service before copying its database files. Keep the data directory private and persistent across deployments.
 
 An existing version 1 or 2 database is migrated to version 3 when you next start the server manually. The transaction preserves registrations, custom cities, review statuses, consent, and rate-limit windows, and leaves old registration rows retained in the legacy table. Pre-JWT admin sessions are cleared once; sign in again. The eight reference tables retain their layouts; `admin_refresh_tokens` is a separate extension referencing `admin_sessions`. No database or migration was executed during authoring; back up existing data before your manual restart. The sibling landing database is not automatically opened or changed.
 

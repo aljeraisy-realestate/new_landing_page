@@ -5,9 +5,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { openStore } from '../server/store.js';
+import { sqliteFile } from '../server/sqlite-directory.js';
 
 const schema = readFileSync(new URL('./fixtures/original-landing.sql', import.meta.url), 'utf8');
 const filters = { search: '', status: '', page: 1 };
+
+test('existing-volume deployments fail rather than create a replacement database in an empty mount', (t) => {
+  const root = fixture(t);
+  assert.throws(() => sqliteFile(root, undefined, 'empty-mount', true), /existing Giftly database/i);
+  const file = join(root, 'original', 'nested', 'original.sqlite');
+  originalDatabase(file);
+  assert.equal(sqliteFile(root, undefined, 'original', true), file);
+  assert.throws(() => sqliteFile(root, 'missing.sqlite', undefined, true), /existing Giftly database/i);
+});
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'giftly-directory-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));

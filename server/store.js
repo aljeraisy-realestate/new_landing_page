@@ -9,8 +9,8 @@ import { sqliteFile } from './sqlite-directory.js';
 export const hash = (value) => createHash('sha256').update(value).digest('hex');
 const csrfFor = (token, binding) => createHmac('sha256', binding).update(token).digest('hex');
 
-export function openStore(root, filename, dataDirectory) {
-  const file = sqliteFile(root, filename, dataDirectory);
+export function openStore(root, filename, dataDirectory, requireExisting = false) {
+  const file = sqliteFile(root, filename, dataDirectory, requireExisting);
   mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(file, { enableForeignKeyConstraints: true, enableDoubleQuotedStringLiterals: false });
   db.exec(`

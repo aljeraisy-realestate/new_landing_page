@@ -35,7 +35,7 @@ function isGiftlyDatabase(file) {
   } finally { db.close(); }
 }
 
-export function sqliteFile(root, filename, dataDirectory) {
+export function sqliteFile(root, filename, dataDirectory, requireExisting = false) {
   const directory = resolve(root, dataDirectory?.trim() || 'data');
   privateLocation(root, directory);
   if (filename?.trim()) {
@@ -44,6 +44,7 @@ export function sqliteFile(root, filename, dataDirectory) {
     if (dataDirectory?.trim() && !inside(canonical(directory), canonical(file))) {
       throw new Error('SQLITE_PATH must be inside SQLITE_DATA_DIR when both are configured.');
     }
+    if (requireExisting && !existsSync(file)) throw new Error('An existing Giftly database is required; check the mounted volume.');
     return file;
   }
   if (canonical(directory) === canonical(root)) throw new Error('SQLITE_DATA_DIR must be a dedicated database folder.');
@@ -56,5 +57,6 @@ export function sqliteFile(root, filename, dataDirectory) {
   if (matches.length > 1) throw new Error('Multiple Giftly databases found. Set SQLITE_PATH to select the intended file within SQLITE_DATA_DIR.');
   if (matches.length === 1) return matches[0];
   if (files.length) throw new Error('No compatible Giftly database found in SQLITE_DATA_DIR; refusing to create an empty replacement.');
+  if (requireExisting) throw new Error('An existing Giftly database is required in SQLITE_DATA_DIR; check the mounted volume.');
   return resolve(directory, 'couriers.sqlite');
 }

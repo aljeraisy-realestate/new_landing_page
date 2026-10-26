@@ -13,12 +13,15 @@ services:
       HOST: 0.0.0.0
       NODE_ENV: production
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
-      SQLITE_DATA_DIR: /app/data
+      SQLITE_DATA_DIR: /data
+      SQLITE_REQUIRE_EXISTING: "true"
     volumes:
-      - giftly-data:/app/data
+      - giftly-data:/data
     init: true
     restart: unless-stopped
     stop_grace_period: 10s
 
 volumes:
   giftly-data:
+    name: giftly-data
+    external: true
