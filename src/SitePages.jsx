@@ -3,6 +3,7 @@ import { cities, pageContent } from './pages-content.js';
 import { pageHref } from './preferences.js';
 import { normalizePhone } from '../shared/courier.js';
 import LegalPage from './LegalPage.jsx';
+import { phoneInputValue, phoneKeyDown } from './phone-input.js';
 
 function PageHeading({ title, intro, language, label, Icon }) {
   const c = pageContent[language];
@@ -30,7 +31,8 @@ function CourierPage({ language, Icon }) {
 
   function update(event) {
     const { name, value } = event.target;
-    const nextValue = name === 'phone' ? value.replace(/[^0-9٠-٩۰-۹]/g, '').slice(0, 10) : value;
+    const nextValue = name === 'phone' ? phoneInputValue(value) : value;
+    if (name === 'phone') event.target.value = nextValue;
     setFields((current) => ({ ...current, [name]: nextValue }));
     setErrors((current) => ({ ...current, [name]: undefined }));
     if (status === 'error' || status === 'invalid') setStatus('idle');
@@ -105,7 +107,7 @@ function CourierPage({ language, Icon }) {
           <h2>{c.application}</h2><p className="form-intro">{c.formNote}</p>
           <fieldset disabled={status === 'sending'}>
             <label className="form-field"><span>{c.name}</span><input {...fieldProps('name')} autoComplete="name" required maxLength="100" placeholder={c.namePlaceholder} />{errorFor('name')}</label>
-            <label className="form-field"><span>{c.mobile}</span><input {...fieldProps('phone')} type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength="10" dir="ltr" placeholder="0551234567" aria-describedby={`phone-hint${errors.phone ? ' error-phone' : ''}`} />{errorFor('phone')}</label>
+            <label className="form-field"><span>{c.mobile}</span><input {...fieldProps('phone')} onKeyDown={phoneKeyDown} onInput={update} type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength="10" dir="ltr" placeholder="0551234567" aria-describedby={`phone-hint${errors.phone ? ' error-phone' : ''}`} />{errorFor('phone')}</label>
             <p id="phone-hint" className="field-hint phone-field-hint">{c.phoneHint}</p>
             <div className="form-row">
               <label className="form-field"><span>{c.city}</span><select {...fieldProps('city')} autoComplete="address-level2" required><option value="">{c.chooseCity}</option>{cities.map(([id, arabic, english]) => <option key={id} value={id}>{ar ? arabic : english}</option>)}<option value="other">{c.otherCity}</option></select>{errorFor('city')}</label>
