@@ -190,11 +190,12 @@ test('admin APIs require authentication, correct origin, CSRF, and a live sessio
       assert.equal((await send('/api/couriers', { method: 'POST', body: applicant, originHeader: 'https://untrusted.example' })).status, 403);
       assert.equal((await send('/api/couriers', { method: 'POST', body: { ...applicant, name: 'a'.repeat(9000) } })).status, 413);
     });
-    await t.test('successful registration persists and duplicate phones do not overwrite', async () => {
+    await t.test('successful registration persists and duplicate phones are reported without overwriting', async () => {
       const first = await send('/api/courier-leads', { method: 'POST', body: { ...applicant, ref: 'launch_2026' } });
       const duplicate = await send('/api/couriers', { method: 'POST', body: { ...applicant, name: 'Different Person' } });
-      assert.equal(first.status, 201); assert.equal(duplicate.status, 201);
-      assert.deepEqual(await first.json(), await duplicate.json());
+      assert.equal(first.status, 201); assert.equal(duplicate.status, 409);
+      assert.deepEqual(await first.json(), { ok: true });
+      assert.deepEqual(await duplicate.json(), { error: 'already_registered' });
       assert.equal(store.list(filters).items[0].name, applicant.name);
       assert.equal(store.list(filters).items[0].ref, 'launch_2026');
     });
@@ -235,7 +236,7 @@ test('admin APIs require authentication, correct origin, CSRF, and a live sessio
     });
     await t.test('phone and sign-in request limits reject repeated attempts', async () => {
       // The earlier future cleanup reset the request-limit windows too.
-      for (let index = 0; index < 5; index += 1) assert.equal((await send('/api/couriers', { method: 'POST', body: applicant })).status, 201);
+      for (let index = 0; index < 5; index += 1) assert.equal((await send('/api/couriers', { method: 'POST', body: applicant })).status, 409);
       assert.equal((await send('/api/couriers', { method: 'POST', body: applicant })).status, 429);
       let response;
       for (let index = 0; index < 9; index += 1) response = await send('/api/admin/session', { method: 'POST', body: { username: 'test-admin', password: 'incorrect' } });

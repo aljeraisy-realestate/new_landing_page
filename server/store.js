@@ -61,6 +61,7 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
         const lead = insert.get(courier.name, courier.phone, courier.city, courier.phoneType, courier.ref ?? null, courier.locale);
         if (lead) db.prepare('INSERT INTO courier_lead_reviews (lead_id, status, consent_at) VALUES (?, ?, ?)').run(lead.id, 'new', new Date().toISOString());
         db.exec('COMMIT');
+        return Boolean(lead);
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     },
     importCouriers(records) {

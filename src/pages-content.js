@@ -40,6 +40,7 @@ export const pageContent = {
     invalidName: 'أدخل اسماً صحيحاً من حرفين على الأقل.', invalidCity: 'اختر المدينة أو اكتب اسم مدينتك.',
     invalidDevice: 'اختر نوع الجوال.', invalidConsent: 'يلزم موافقتك على استخدام بيانات التواصل.',
     submitError: 'تعذّر تأكيد استلام طلبك. بياناتك ما زالت هنا؛ حاول مرة أخرى أو راسل info@giftly.sa.',
+    alreadyRegistered: 'رقم الجوال مسجّل مسبقاً. طلبك السابق محفوظ؛ لتعديل بياناتك راسل info@giftly.sa.',
     notFound: 'الصفحة غير موجودة', notFoundBody: 'يمكنك العودة إلى الرئيسية أو استخدام الروابط أدناه.',
   },
   en: {
@@ -79,6 +80,7 @@ export const pageContent = {
     invalidName: 'Enter a valid name with at least two letters.', invalidCity: 'Choose a city or enter your city name.',
     invalidDevice: 'Choose your phone type.', invalidConsent: 'Please agree to the use of your contact details.',
     submitError: 'We could not confirm receipt. Your details are still here; try again or email info@giftly.sa.',
+    alreadyRegistered: 'This phone number is already registered. Your previous application is saved; email info@giftly.sa to update your details.',
     notFound: 'Page not found', notFoundBody: 'Return to the homepage or use the links below.',
   },
 };

@@ -1,4 +1,5 @@
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, randomUUID } from 'node:crypto';
+import { isIP } from 'node:net';
 import { once } from 'node:events';
 import { reviewStatuses, validateCourier } from '../shared/courier.js';
 import { hash } from './store.js';
@@ -57,10 +58,22 @@ function readJson(request, maximum = 8192) {
   });
 }
 
-export function createApi({ store, origins, secureCookies, now = Date.now, cookiePath }) {
+export function createApi({ store, origins, secureCookies, now = Date.now, cookiePath, logger = (entry) => console.info(JSON.stringify(entry)) }) {
   const auth = createAdminAuth({ store, secureCookies, now, cookiePath });
+  function allowedOrigin(value) {
+    if (origins.has(value)) return true;
+    for (const configured of origins) {
+      try {
+        const counterpart = new URL(configured);
+        if (counterpart.protocol !== 'https:' || isIP(counterpart.hostname) || !counterpart.hostname.includes('.')) continue;
+        counterpart.hostname = counterpart.hostname.startsWith('www.') ? counterpart.hostname.slice(4) : `www.${counterpart.hostname}`;
+        if (counterpart.origin === value) return true;
+      } catch { /* Ignore invalid configuration entries. */ }
+    }
+    return false;
+  }
   function originRequired(request) {
-    if (!origins.has(request.headers.origin) || request.headers['sec-fetch-site'] === 'cross-site') throw new HttpError(403, 'forbidden_origin');
+    if (!allowedOrigin(request.headers.origin) || request.headers['sec-fetch-site'] === 'cross-site') throw new HttpError(403, 'forbidden_origin');
   }
   function csrfRequired(request, session) {
     originRequired(request);
@@ -74,19 +87,29 @@ export function createApi({ store, origins, secureCookies, now = Date.now, cooki
 
   return async function api(request, response, url) {
     if (!url.pathname.startsWith('/api/')) return false;
+    const submission = ['/api/courier-leads', '/api/couriers'].includes(url.pathname) && request.method === 'POST';
+    const requestId = submission ? randomUUID() : undefined;
+    const record = (status, code, error) => {
+      if (!submission) return;
+      const databaseCode = typeof error?.code === 'string' && /^SQLITE_[A-Z_]+$/.test(error.code) ? error.code : undefined;
+      // Never log bodies, names, phones, cookies, raw exception messages, or IPs.
+      try { logger({ event: 'courier_submission', requestId, status, code, ...(databaseCode ? { databaseCode } : {}) }); } catch { /* Logging must not break a save. */ }
+    };
     try {
       store.clean(now());
       const address = hash(request.socket.remoteAddress || 'unknown');
       const method = request.method;
-      if (['/api/courier-leads', '/api/couriers'].includes(url.pathname) && method === 'POST') {
+      if (submission) {
         originRequired(request);
         limited('courier:global', 100, 15 * 60 * 1000);
-        limited(`courier:ip:${address}`, 20, 15 * 60 * 1000);
+        // The socket address belongs to the reverse proxy in production.
+        // Keep global and per-phone limits; do not trust spoofable forwarding headers.
         const courier = validateCourier(await readJson(request));
         if (!courier) throw new HttpError(400, 'invalid_fields');
         limited(`courier:phone:${hash(courier.phone)}`, 5, 15 * 60 * 1000);
-        store.addCourier(courier);
+        if (!store.addCourier(courier)) throw new HttpError(409, 'already_registered');
         json(response, { ok: true }, 201);
+        record(201, 'created');
         return true;
       }
       if (url.pathname === '/api/admin/session' && method === 'POST') {
@@ -186,6 +209,7 @@ export function createApi({ store, origins, secureCookies, now = Date.now, cooki
     } catch (error) {
       if (response.headersSent) { response.destroy(); return true; }
       const status = error instanceof HttpError ? error.status : 500;
+      record(status, error instanceof HttpError ? error.message : 'server_error', error);
       json(response, { error: error instanceof HttpError ? error.message : 'server_error' }, status, { ...(error.retry ? { 'Retry-After': String(error.retry) } : {}), ...(status === 413 ? { Connection: 'close' } : {}) });
     }
     return true;

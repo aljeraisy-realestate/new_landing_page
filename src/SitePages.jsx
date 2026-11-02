@@ -18,6 +18,7 @@ function CourierPage({ language, Icon }) {
   const [consent, setConsent] = useState(false);
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState('idle');
+  const [submissionError, setSubmissionError] = useState('submitError');
   const form = useRef(null);
   const request = useRef(null);
   const pending = useRef(false);
@@ -67,12 +68,19 @@ function CourierPage({ language, Icon }) {
         method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(payload), credentials: 'same-origin', signal: controller.signal,
       });
+      if (response.status === 409 && response.headers.get('content-type')?.includes('application/json')) {
+        const body = await response.json();
+        if (body.error === 'already_registered') {
+          if (request.current === controller) { setSubmissionError('alreadyRegistered'); setStatus('error'); }
+          return;
+        }
+      }
       if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error('submission_failed');
       const body = await response.json();
       if (body?.ok !== true && !(typeof body?.id === 'string' && body.id.length > 0) && !(typeof body?.id === 'number' && body.id > 0)) throw new Error('unconfirmed_submission');
       if (request.current === controller) setStatus('success');
     } catch {
-      if (request.current === controller) setStatus('error');
+      if (request.current === controller) { setSubmissionError('submitError'); setStatus('error'); }
     } finally {
       window.clearTimeout(timeout);
       if (request.current === controller) request.current = null;
@@ -104,7 +112,7 @@ function CourierPage({ language, Icon }) {
             </div>
             {fields.city === 'other' && <label className="form-field"><span>{c.cityName}</span><input {...fieldProps('cityOther')} required maxLength="80" autoComplete="address-level2" />{errorFor('cityOther')}</label>}
             <label className="checkbox-field consent-field"><input name="consent" type="checkbox" checked={consent} required aria-invalid={!!errors.consent} aria-describedby={errors.consent ? 'error-consent' : undefined} onChange={(event) => { setConsent(event.target.checked); setErrors((current) => ({ ...current, consent: undefined })); }} /><span>{c.consent}<a href={pageHref('/privacy', language)} target="_blank" rel="noopener noreferrer">{c.privacy}</a>.</span></label>{errorFor('consent')}
-            {(status === 'invalid' || status === 'error') && <p className="form-error" role="alert">{status === 'invalid' ? c.invalid : c.submitError}</p>}
+            {(status === 'invalid' || status === 'error') && <p className="form-error" role="alert">{status === 'invalid' ? c.invalid : c[submissionError]}</p>}
             <button className="button form-submit" type="submit">{status === 'sending' ? c.sending : c.submit}<Icon name="diagonal" /></button>
           </fieldset>
         </form>}
