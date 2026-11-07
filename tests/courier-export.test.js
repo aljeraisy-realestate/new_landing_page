@@ -50,7 +50,7 @@ test('all and filtered CSV downloads export every row and remain authenticated',
   process.env.ADMIN_USERNAME = 'export-admin'; process.env.ADMIN_PASSWORD = 'test-password'; process.env.ADMIN_JWT_SECRET = randomBytes(32).toString('hex');
   t.after(() => { for (const key of keys) if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key]; });
   const store = fixture(t);
-  store.setStatus(1, 'accepted');
+  store.setStatus(1, 'accepted', 'test-admin');
   const origins = new Set();
   const api = createApi({ store, origins, secureCookies: false });
   const server = createServer((request, response) => api(request, response, new URL(request.url, 'http://localhost')));

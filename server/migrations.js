@@ -5,7 +5,7 @@ const tableExists = (db, name) => !!db.prepare("SELECT name FROM sqlite_master W
 
 export function migrate(db) {
   const version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 3) throw new Error('This database needs a newer Giftly server.');
+  if (version > 4) throw new Error('This database needs a newer Giftly server.');
   db.exec('BEGIN IMMEDIATE');
   try {
     let legacySessions = false;
@@ -53,7 +53,7 @@ export function migrate(db) {
     }
     // Pre-JWT sessions cannot be reused as JWT refresh families.
     if (version < 3) db.exec('DELETE FROM admin_refresh_tokens; DELETE FROM admin_sessions');
-    db.exec('PRAGMA user_version = 3; COMMIT');
+    db.exec('PRAGMA user_version = 4; COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');
     throw error;

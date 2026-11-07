@@ -146,19 +146,37 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
       const cityOptions = [...new Set(db.prepare('SELECT DISTINCT city FROM courier_leads ORDER BY city COLLATE NOCASE').all().map(({ city }) => canonicalCity(city)))];
       return { items, total, page, pageSize, totalPages, hasPrevious: page > 1, hasNext: page < totalPages, cityOptions, counts };
     },
-    deleteCourier(id) {
-      return db.prepare('DELETE FROM courier_leads WHERE id = ?').run(id).changes > 0;
-    },
-    setStatus(id, status) {
-      db.exec('BEGIN IMMEDIATE');
-      try {
-        const result = db.prepare(`INSERT INTO courier_lead_reviews (lead_id, status)
-          SELECT id, ? FROM courier_leads WHERE id = ?
-          ON CONFLICT(lead_id) DO UPDATE SET status = excluded.status`).run(status, id);
-        if (result.changes > 0) db.prepare('UPDATE courier_leads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(id);
-        db.exec('COMMIT');
-        return result.changes > 0;
-      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    deleteCourier(id, actor) { return mutateCourier(id, actor, null); },
+    setStatus(id, status, actor) { return mutateCourier(id, actor, status); },
+    listCourierAudit(requestedPage) {
+      const pageSize = 20;
+      const { total } = db.prepare('SELECT COUNT(*) AS total FROM courier_audit_log').get();
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      const page = Math.min(requestedPage, totalPages);
+      const items = db.prepare('SELECT * FROM courier_audit_log ORDER BY id DESC LIMIT ? OFFSET ?').all(pageSize, (page - 1) * pageSize);
+      return { items, page, totalPages };
     },
   };
+
+  function mutateCourier(id, actor, status) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const courier = db.prepare(`SELECT COALESCE(reviews.status, 'new') AS status
+        FROM courier_leads AS leads LEFT JOIN courier_lead_reviews AS reviews ON reviews.lead_id = leads.id
+        WHERE leads.id = ?`).get(id);
+      if (courier && courier.status !== status) {
+        if (status === null) {
+          db.prepare('DELETE FROM courier_leads WHERE id = ?').run(id);
+        } else {
+          db.prepare(`INSERT INTO courier_lead_reviews (lead_id, status) VALUES (?, ?)
+            ON CONFLICT(lead_id) DO UPDATE SET status = excluded.status`).run(id, status);
+          db.prepare('UPDATE courier_leads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(id);
+        }
+        db.prepare(`INSERT INTO courier_audit_log (courier_id, actor, action, previous_status, new_status)
+          VALUES (?, ?, ?, ?, ?)`).run(id, actor, status === null ? 'deleted' : 'status_changed', courier.status, status);
+      }
+      db.exec('COMMIT');
+      return Boolean(courier);
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+  }
 }

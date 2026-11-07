@@ -19,6 +19,26 @@ CREATE TABLE IF NOT EXISTS courier_leads (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX IF NOT EXISTS courier_leads_phone_unique ON courier_leads(phone);
+
+-- Retain the courier ID after deletion without retaining applicant contact details.
+CREATE TABLE IF NOT EXISTS courier_audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  courier_id INTEGER NOT NULL,
+  actor TEXT NOT NULL CHECK(length(actor) BETWEEN 1 AND 100),
+  action TEXT NOT NULL CHECK(action IN ('status_changed', 'deleted')),
+  previous_status TEXT NOT NULL CHECK(previous_status IN ('new', 'contacted', 'accepted')),
+  new_status TEXT CHECK(new_status IN ('new', 'contacted', 'accepted')),
+  occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  CHECK((action = 'deleted' AND new_status IS NULL) OR
+    (action = 'status_changed' AND new_status IS NOT NULL AND new_status <> previous_status))
+);
+CREATE TRIGGER IF NOT EXISTS courier_audit_no_update BEFORE UPDATE ON courier_audit_log
+BEGIN SELECT RAISE(ABORT, 'Courier audit log is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS courier_audit_no_delete BEFORE DELETE ON courier_audit_log
+BEGIN SELECT RAISE(ABORT, 'Courier audit log is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS courier_audit_no_replace BEFORE INSERT ON courier_audit_log
+WHEN EXISTS (SELECT 1 FROM courier_audit_log WHERE id = NEW.id)
+BEGIN SELECT RAISE(ABORT, 'Courier audit log is append-only'); END;
 CREATE TABLE IF NOT EXISTS contact_messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   full_name TEXT NOT NULL, email TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '',

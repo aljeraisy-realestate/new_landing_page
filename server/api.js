@@ -193,17 +193,23 @@ export function createApi({ store, origins, secureCookies, now = Date.now, cooki
           json(response, store.list(filters));
           return true;
         }
+        if (url.pathname === '/api/admin/courier-audit' && method === 'GET') {
+          const page = Number(url.searchParams.get('page') ?? '1');
+          if (!Number.isSafeInteger(page) || page < 1) throw new HttpError(400, 'invalid_page');
+          json(response, store.listCourierAudit(page));
+          return true;
+        }
         const match = url.pathname.match(/^\/api\/admin\/couriers\/([1-9]\d{0,15})$/);
         if (match && (method === 'PATCH' || method === 'DELETE')) {
           csrfRequired(request, session);
           const id = Number(match[1]);
           if (!Number.isSafeInteger(id)) throw new HttpError(400, 'invalid_id');
           if (method === 'DELETE') {
-            if (!store.deleteCourier(id)) throw new HttpError(404, 'not_found');
+            if (!store.deleteCourier(id, session.username)) throw new HttpError(404, 'not_found');
           } else {
             const value = await readJson(request);
             if (Object.keys(value).some((key) => key !== 'status') || !reviewStatuses.includes(value.status)) throw new HttpError(400, 'invalid_status');
-            if (!store.setStatus(id, value.status)) throw new HttpError(404, 'not_found');
+            if (!store.setStatus(id, value.status, session.username)) throw new HttpError(404, 'not_found');
           }
           json(response, { ok: true });
           return true;

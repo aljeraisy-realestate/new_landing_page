@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cities, reviewStatuses } from '../shared/courier.js';
 import { adminJson, adminSignIn, adminSignOut, getAdminSession } from './admin-client.js';
 import AdminTransfer from './AdminTransfer.jsx';
+import AdminAudit from './AdminAudit.jsx';
 import { canonicalCity, courierPageSizes } from '../shared/courier-filters.js';
 
 const labels = {
@@ -205,5 +206,6 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
       <span aria-live="polite">{firstRecord}–{lastRecord} {c.of} {matchesQuery ? data.total : '—'} {c.results} · {c.page} {page} {c.of} {lastPage}</span>
       <div className="admin-pagination-buttons"><button className="text-link pagination-previous" disabled={paginationBusy || !data?.hasPrevious} onClick={() => setPage((value) => Math.max(1, value - 1))}><Icon name="arrow" />{c.previous}</button><button className="text-link pagination-next" disabled={paginationBusy || !data?.hasNext} onClick={() => setPage((value) => Math.min(lastPage, value + 1))}>{c.next}<Icon name="arrow" /></button></div>
     </div>
+    <AdminAudit language={language} copy={c} revision={revision} dateLabel={dateLabel} onSession={setSession} />
   </section>;
 }

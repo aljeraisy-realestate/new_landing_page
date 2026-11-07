@@ -59,7 +59,7 @@ export function createAdminAuth({ store, secureCookies, now = Date.now, cookiePa
       || !/^[a-f0-9]{64}$/.test(payload.sid) || !/^[a-f0-9]{64}$/.test(payload.jti)
       || !Number.isInteger(payload.iat) || !Number.isInteger(payload.exp) || payload.exp <= payload.iat || payload.exp - payload.iat > ACCESS_SECONDS) return null;
     const session = withSession(payload.sid);
-    return session ? { ...session, accessExpiresAt: payload.exp * 1000 } : null;
+    return session ? { ...session, username: payload.sub, accessExpiresAt: payload.exp * 1000 } : null;
   }
   const describe = (session) => ({ configured, authenticated: true, csrfToken: session.csrf_token, accessExpiresAt: session.accessExpiresAt, refreshExpiresAt: session.expires_at });
   async function credentials(value) {

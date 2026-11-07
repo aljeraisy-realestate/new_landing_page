@@ -43,7 +43,7 @@ test('SQLite survives reopening, preserves duplicate applicants, and binds searc
     assert.equal(store.list({ ...filters, search: 'الرياض' }).total, 1);
     assert.equal(store.list({ ...filters, search: "' OR 1=1 --" }).total, 0);
     assert.equal(store.list({ ...filters, search: '%' }).total, 0);
-    assert.equal(store.setStatus(result.items[0].id, 'contacted'), true);
+    assert.equal(store.setStatus(result.items[0].id, 'contacted', 'test-admin'), true);
     store.close();
     store = openStore(directory);
     result = store.list({ ...filters, status: 'contacted' });
@@ -89,7 +89,7 @@ test('base table columns match the landing-page schema and preserve existing lea
     assert.equal(row.ref, 'existing-ref');
     store.addCourier(validateCourier({ ...applicant, phone: '0512345679', ref: 'new-ref' }));
     assert.equal(store.list({ ...filters, search: '0512345679' }).items[0].id, 43);
-    assert.ok(store.setStatus(42, 'contacted'));
+    assert.ok(store.setStatus(42, 'contacted', 'test-admin'));
     db = new DatabaseSync(filename);
     try {
       assert.deepEqual(db.prepare('PRAGMA table_info(courier_leads)').all().map((column) => column.name), ['id', 'name', 'phone', 'city', 'phone_type', 'ref', 'locale', 'created_at', 'updated_at']);
@@ -231,6 +231,30 @@ test('admin APIs require authentication, correct origin, CSRF, and a live sessio
       try { assert.equal(reader.prepare('SELECT 1 FROM courier_lead_reviews WHERE lead_id = ?').get(target.id), undefined); }
       finally { reader.close(); }
       assert.equal((await send(path, { method: 'DELETE', cookie, csrf: csrfToken })).status, 404);
+    });
+    await t.test('audit records identify the admin and survive courier deletion without allowing edits', async () => {
+      const path = '/api/admin/courier-audit';
+      assert.equal((await send(path)).status, 401);
+      assert.equal((await send(path, { method: 'DELETE', cookie, csrf: csrfToken })).status, 404);
+      assert.equal((await send(`/api/admin/couriers/${id}`, { method: 'PATCH', cookie, csrf: csrfToken, body: { status: 'contacted' } })).status, 200);
+      const response = await send(path, { cookie });
+      assert.equal(response.status, 200);
+      const { items } = await response.json();
+      assert.equal(items.length, 2);
+      assert.deepEqual(items.map(({ actor, action, previous_status, new_status }) => [actor, action, previous_status, new_status]), [
+        ['test-admin', 'deleted', 'new', null], ['test-admin', 'status_changed', 'new', 'contacted'],
+      ]);
+      assert.notEqual(items[0].courier_id, id);
+      assert.equal(items[1].courier_id, id);
+      assert.ok(items.every((entry) => Number.isFinite(Date.parse(entry.occurred_at))));
+      const writer = new DatabaseSync(store.file);
+      try {
+        assert.throws(() => writer.exec('UPDATE courier_audit_log SET actor = NULL'), /append-only/);
+        assert.throws(() => writer.exec('DELETE FROM courier_audit_log'), /append-only/);
+        assert.throws(() => writer.exec('INSERT OR REPLACE INTO courier_audit_log SELECT * FROM courier_audit_log'), /append-only/);
+      } finally { writer.close(); }
+      assert.throws(() => store.deleteCourier(id, ''), /CHECK constraint failed/);
+      assert.equal(store.list(filters).items[0].id, id);
     });
     await t.test('logout and expiration prevent further reads', async () => {
       assert.equal((await send('/api/admin/session', { method: 'DELETE', cookie, csrf: csrfToken })).status, 200);

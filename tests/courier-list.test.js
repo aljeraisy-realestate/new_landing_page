@@ -35,7 +35,7 @@ test('courier pagination starts at 20, has stable ordering, and clamps an invali
 
 test('city aliases, custom cities, international mobile numbers, device and status filters combine', (t) => {
   const store = fixture(t);
-  store.setStatus(3, 'accepted');
+  store.setStatus(3, 'accepted', 'test-admin');
   const result = list(store, { city: 'riyadh', phone: '+966 50 000 0003', phoneType: 'iphone', status: 'accepted' });
   assert.equal(result.total, 1); assert.equal(result.items[0].id, 3);
   assert.equal(list(store, { city: 'riyadh' }).total, 24);
