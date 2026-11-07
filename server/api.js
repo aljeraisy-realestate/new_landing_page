@@ -194,13 +194,17 @@ export function createApi({ store, origins, secureCookies, now = Date.now, cooki
           return true;
         }
         const match = url.pathname.match(/^\/api\/admin\/couriers\/([1-9]\d{0,15})$/);
-        if (match && method === 'PATCH') {
+        if (match && (method === 'PATCH' || method === 'DELETE')) {
           csrfRequired(request, session);
-          const value = await readJson(request);
-          if (Object.keys(value).some((key) => key !== 'status') || !reviewStatuses.includes(value.status)) throw new HttpError(400, 'invalid_status');
           const id = Number(match[1]);
           if (!Number.isSafeInteger(id)) throw new HttpError(400, 'invalid_id');
-          if (!store.setStatus(id, value.status)) throw new HttpError(404, 'not_found');
+          if (method === 'DELETE') {
+            if (!store.deleteCourier(id)) throw new HttpError(404, 'not_found');
+          } else {
+            const value = await readJson(request);
+            if (Object.keys(value).some((key) => key !== 'status') || !reviewStatuses.includes(value.status)) throw new HttpError(400, 'invalid_status');
+            if (!store.setStatus(id, value.status)) throw new HttpError(404, 'not_found');
+          }
           json(response, { ok: true });
           return true;
         }

@@ -38,6 +38,8 @@
 .admin-table td.courier-id { min-width: 70px; font-variant-numeric: tabular-nums; }
 .admin-table tr:last-child td { border-bottom: 0; }
 .admin-table td select { min-height: 42px; padding: 8px 12px; border-radius: 8px; background: var(--paper); color: var(--ink); border: 1px solid var(--line); font: inherit; min-width: 125px; }
+.admin-delete { background: #a52c26; color: #fff; }
+.admin-delete:hover:not(:disabled) { background: #86221d; }
 .admin-empty { padding: 45px 20px; text-align: center; }
 .admin-empty h2 { font-size: 1.3rem; margin-bottom: 12px; }
 .admin-empty p { color: var(--muted); font-size: .95rem; }

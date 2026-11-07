@@ -17,6 +17,8 @@ const labels = {
     empty: 'لا توجد طلبات مطابقة.', emptyHint: 'ستظهر هنا طلبات المندوبين بعد إرسال نموذج الانضمام.',
     previous: 'السابق', next: 'التالي', page: 'الصفحة', of: 'من', results: 'نتيجة',
     saved: 'تم حفظ الحالة.', statusFor: 'حالة طلب', retry: 'حاول مرة أخرى',
+    actions: 'الإجراءات', delete: 'حذف', deleted: 'تم حذف الطلب.',
+    confirmDelete: (id) => `هل تريد حذف الطلب رقم ${id} نهائياً؟ لا يمكن التراجع عن الحذف.`,
     id: 'المعرّف', allCities: 'كل المدن', allDevices: 'كل الأجهزة', pageSize: 'عدد السجلات في الصفحة', clear: 'مسح الفلاتر', filtersError: 'تحقق من رقم الجوال والفلاتر ثم حاول مجدداً.',
   },
   en: {
@@ -31,6 +33,8 @@ const labels = {
     empty: 'No matching applications.', emptyHint: 'Submitted courier applications will appear here.',
     previous: 'Previous', next: 'Next', page: 'Page', of: 'of', results: 'results',
     saved: 'Status saved.', statusFor: 'Application status for', retry: 'Try again',
+    actions: 'Actions', delete: 'Delete', deleted: 'Application deleted.',
+    confirmDelete: (id) => `Permanently delete application #${id}? This cannot be undone.`,
     id: 'ID', allCities: 'All cities', allDevices: 'All devices', pageSize: 'Records per page', clear: 'Clear filters', filtersError: 'Check the mobile number and filters, then try again.',
   },
 };
@@ -152,16 +156,21 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
     } finally { setBusy(false); pending.current = false; }
   }
 
-  async function updateStatus(id, value) {
+  async function mutateCourier(id, options, successNotice) {
     if (savingRef.current) return;
     savingRef.current = true; setSaving(id); setNotice(''); setError('');
     try {
-      await adminJson(`/couriers/${id}`, { method: 'PATCH', body: { status: value }, csrfToken: session.csrfToken }, setSession);
-      setNotice('saved'); setRevision((current) => current + 1);
+      await adminJson(`/couriers/${id}`, { ...options, csrfToken: session.csrfToken }, setSession);
+      setNotice(successNotice); setRevision((current) => current + 1);
     } catch (failure) {
       setError(messageFor(failure));
       if (failure.status === 401) { setSession({ configured: true, authenticated: false }); setData(null); }
     } finally { setSaving(''); savingRef.current = false; }
+  }
+
+  function deleteCourier(id) {
+    if (savingRef.current || !window.confirm(c.confirmDelete(id))) return;
+    void mutateCourier(id, { method: 'DELETE' }, 'deleted');
   }
 
   function dateLabel(value) {
@@ -191,7 +200,7 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
       <div className="admin-filter-actions"><button className="button" type="submit" disabled={busy || !!saving}>{c.searchButton}</button><button className="text-link" type="button" onClick={() => { setDraftPhone(''); setPhone(''); setCity(''); setPhoneType(''); setStatus(''); setPage(1); }}>{c.clear}</button></div>
     </form>
     {error && <p className="form-error" role="alert">{c[error]}</p>}<p className="admin-notice" role="status">{notice ? c[notice] : loading ? c.loading : ''}</p>
-    <div className="admin-table-wrap" aria-busy={loading}><table className="admin-table"><caption className="sr-only">{c.title}</caption><thead><tr>{['id', 'name', 'phone', 'city', 'device', 'ref', 'created', 'status'].map((key) => <th key={key} scope="col">{c[key]}</th>)}</tr></thead><tbody>{matchesQuery && data.items.map((row) => <tr key={row.id}><td className="courier-id"><bdi>{row.id}</bdi></td><td>{row.name}</td><td><bdi>{row.phone}</bdi></td><td>{cityLabel(row.city)}</td><td>{row.phone_type === 'iphone' ? 'iPhone' : 'Android'}</td><td>{row.ref || '—'}</td><td>{dateLabel(row.created_at)}</td><td><select aria-label={`${c.statusFor} ${row.name}`} value={row.status} disabled={loading || !!saving || busy} onChange={(event) => updateStatus(row.id, event.target.value)}>{reviewStatuses.map((value) => <option key={value} value={value}>{c[value]}</option>)}</select>{saving === row.id && <span className="sr-only" role="status">{c.loading}</span>}</td></tr>)}</tbody></table>{!loading && matchesQuery && data.items.length === 0 && <div className="admin-empty"><h2>{c.empty}</h2><p>{c.emptyHint}</p></div>}</div>
+    <div className="admin-table-wrap" aria-busy={loading}><table className="admin-table"><caption className="sr-only">{c.title}</caption><thead><tr>{['id', 'name', 'phone', 'city', 'device', 'ref', 'created', 'status', 'actions'].map((key) => <th key={key} scope="col">{c[key]}</th>)}</tr></thead><tbody>{matchesQuery && data.items.map((row) => <tr key={row.id}><td className="courier-id"><bdi>{row.id}</bdi></td><td>{row.name}</td><td><bdi>{row.phone}</bdi></td><td>{cityLabel(row.city)}</td><td>{row.phone_type === 'iphone' ? 'iPhone' : 'Android'}</td><td>{row.ref || '—'}</td><td>{dateLabel(row.created_at)}</td><td><select aria-label={`${c.statusFor} ${row.name}`} value={row.status} disabled={loading || !!saving || busy} onChange={(event) => mutateCourier(row.id, { method: 'PATCH', body: { status: event.target.value } }, 'saved')}>{reviewStatuses.map((value) => <option key={value} value={value}>{c[value]}</option>)}</select>{saving === row.id && <span className="sr-only" role="status">{c.loading}</span>}</td><td><button className="button button-small admin-delete" type="button" aria-label={`${c.delete} #${row.id}`} disabled={loading || !!saving || busy} onClick={() => deleteCourier(row.id)}>{c.delete}</button></td></tr>)}</tbody></table>{!loading && matchesQuery && data.items.length === 0 && <div className="admin-empty"><h2>{c.empty}</h2><p>{c.emptyHint}</p></div>}</div>
     <div className="admin-pagination">
       <span aria-live="polite">{firstRecord}–{lastRecord} {c.of} {matchesQuery ? data.total : '—'} {c.results} · {c.page} {page} {c.of} {lastPage}</span>
       <div className="admin-pagination-buttons"><button className="text-link pagination-previous" disabled={paginationBusy || !data?.hasPrevious} onClick={() => setPage((value) => Math.max(1, value - 1))}><Icon name="arrow" />{c.previous}</button><button className="text-link pagination-next" disabled={paginationBusy || !data?.hasNext} onClick={() => setPage((value) => Math.min(lastPage, value + 1))}>{c.next}<Icon name="arrow" /></button></div>

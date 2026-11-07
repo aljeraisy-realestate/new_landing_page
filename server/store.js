@@ -146,6 +146,9 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
       const cityOptions = [...new Set(db.prepare('SELECT DISTINCT city FROM courier_leads ORDER BY city COLLATE NOCASE').all().map(({ city }) => canonicalCity(city)))];
       return { items, total, page, pageSize, totalPages, hasPrevious: page > 1, hasNext: page < totalPages, cityOptions, counts };
     },
+    deleteCourier(id) {
+      return db.prepare('DELETE FROM courier_leads WHERE id = ?').run(id).changes > 0;
+    },
     setStatus(id, status) {
       db.exec('BEGIN IMMEDIATE');
       try {

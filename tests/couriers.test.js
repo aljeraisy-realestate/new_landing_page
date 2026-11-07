@@ -217,6 +217,21 @@ test('admin APIs require authentication, correct origin, CSRF, and a live sessio
       assert.equal((await send(`/api/admin/couriers/${id}`, { method: 'PATCH', body, cookie, csrf: csrfToken })).status, 200);
       assert.equal(store.list(filters).items[0].status, 'contacted');
     });
+    await t.test('deleting a courier requires admin authentication, origin and CSRF', async () => {
+      store.addCourier(validateCourier({ ...applicant, phone: '0512345679' }));
+      const target = store.list({ ...filters, phone: '0512345679' }).items[0];
+      const path = `/api/admin/couriers/${target.id}`;
+      assert.equal((await send(path, { method: 'DELETE' })).status, 401);
+      assert.equal((await send(path, { method: 'DELETE', cookie })).status, 403);
+      assert.equal((await send(path, { method: 'DELETE', cookie, csrf: csrfToken, originHeader: 'https://untrusted.example' })).status, 403);
+      assert.equal(store.list(filters).total, 2);
+      assert.equal((await send(path, { method: 'DELETE', cookie, csrf: csrfToken })).status, 200);
+      assert.deepEqual(store.list(filters).items.map((row) => row.id), [id]);
+      const reader = new DatabaseSync(store.file, { readOnly: true });
+      try { assert.equal(reader.prepare('SELECT 1 FROM courier_lead_reviews WHERE lead_id = ?').get(target.id), undefined); }
+      finally { reader.close(); }
+      assert.equal((await send(path, { method: 'DELETE', cookie, csrf: csrfToken })).status, 404);
+    });
     await t.test('logout and expiration prevent further reads', async () => {
       assert.equal((await send('/api/admin/session', { method: 'DELETE', cookie, csrf: csrfToken })).status, 200);
       assert.equal((await send('/api/admin/couriers', { cookie })).status, 401);
