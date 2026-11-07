@@ -256,6 +256,24 @@ test('admin APIs require authentication, correct origin, CSRF, and a live sessio
       assert.throws(() => store.deleteCourier(id, ''), /CHECK constraint failed/);
       assert.equal(store.list(filters).items[0].id, id);
     });
+    await t.test('audit pagination defaults to 20 and supports 50 and 100 entries', async () => {
+      for (let index = 0; index < 103; index++) {
+        store.setStatus(id, index % 2 ? 'contacted' : 'accepted', 'test-admin');
+      }
+      const path = '/api/admin/courier-audit';
+      const first = await (await send(path, { cookie })).json();
+      assert.equal(first.items.length, 20);
+      assert.equal(first.totalPages, 6);
+      for (const pageSize of [20, 50, 100]) {
+        const firstPage = await (await send(`${path}?pageSize=${pageSize}`, { cookie })).json();
+        const second = await (await send(`${path}?page=2&pageSize=${pageSize}`, { cookie })).json();
+        assert.equal(firstPage.items.length, pageSize);
+        assert.equal(second.page, 2);
+        assert.equal(second.items.length, Math.min(pageSize, 105 - pageSize));
+        assert.equal(second.items[0].id, firstPage.items.at(-1).id - 1);
+      }
+      assert.equal((await send(`${path}?pageSize=25`, { cookie })).status, 400);
+    });
     await t.test('logout and expiration prevent further reads', async () => {
       assert.equal((await send('/api/admin/session', { method: 'DELETE', cookie, csrf: csrfToken })).status, 200);
       assert.equal((await send('/api/admin/couriers', { cookie })).status, 401);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { adminJson } from './admin-client.js';
+import { courierPageSizes } from '../shared/courier-filters.js';
 
 const labels = {
   ar: { courier: 'معرّف الطلب', action: 'الإجراء', actor: 'حساب الإدارة', time: 'الوقت (الرياض)', change: 'الحالة السابقة ← الجديدة', status_changed: 'تغيير الحالة', deleted: 'حذف الطلب', empty: 'لا توجد إجراءات مسجّلة بعد.' },
@@ -9,6 +10,7 @@ const labels = {
 export default function AdminAudit({ language, copy, revision, dateLabel, onSession }) {
   const c = labels[language];
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(courierPageSizes[0]);
   const [result, setResult] = useState(null);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -17,13 +19,21 @@ export default function AdminAudit({ language, copy, revision, dateLabel, onSess
     const controller = new AbortController();
     setResult(null);
     setFailed(false);
-    adminJson(`/courier-audit?page=${page}`, { signal: controller.signal }, onSession)
+    adminJson(`/courier-audit?page=${page}&pageSize=${pageSize}`, { signal: controller.signal }, onSession)
       .then((data) => { if (!controller.signal.aborted) setResult(data); })
       .catch(() => { if (!controller.signal.aborted) setFailed(true); });
     return () => controller.abort();
-  }, [page, revision, retry, onSession]);
+  }, [page, pageSize, revision, retry, onSession]);
+
+  const current = result?.page === page && result.pageSize === pageSize;
 
   return <>
+    <label className="form-field admin-audit-page-size">
+      <span>{copy.pageSize}</span>
+      <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}>
+        {courierPageSizes.map((size) => <option key={size} value={size}>{size}</option>)}
+      </select>
+    </label>
     {failed ? <div><p role="alert">{copy.error}</p><button type="button" className="text-link" onClick={() => setRetry((value) => value + 1)}>{copy.retry}</button></div>
       : !result ? <p role="status">{copy.loading}</p>
       : result.items.length === 0 ? <p>{c.empty}</p>
@@ -42,8 +52,8 @@ export default function AdminAudit({ language, copy, revision, dateLabel, onSess
         <div className="admin-pagination">
           <span>{copy.page} {result.page} {copy.of} {result.totalPages}</span>
           <div className="admin-pagination-buttons">
-            <button type="button" className="text-link" disabled={result.page <= 1} onClick={() => setPage(result.page - 1)}>{copy.previous}</button>
-            <button type="button" className="text-link" disabled={result.page >= result.totalPages} onClick={() => setPage(result.page + 1)}>{copy.next}</button>
+            <button type="button" className="text-link" disabled={!current || result.page <= 1} onClick={() => setPage(result.page - 1)}>{copy.previous}</button>
+            <button type="button" className="text-link" disabled={!current || result.page >= result.totalPages} onClick={() => setPage(result.page + 1)}>{copy.next}</button>
           </div>
         </div>
       </>}

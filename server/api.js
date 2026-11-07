@@ -5,7 +5,7 @@ import { reviewStatuses, validateCourier } from '../shared/courier.js';
 import { hash } from './store.js';
 import { createAdminAuth } from './admin-auth.js';
 import { CSV_MAX_BYTES, courierCsvChunks, createCourierCsv, parseCourierCsv } from '../shared/courier-csv.js';
-import { normalizeCourierFilters } from '../shared/courier-filters.js';
+import { courierPageSizes, normalizeCourierFilters } from '../shared/courier-filters.js';
 
 export class HttpError extends Error {
   constructor(status, code) { super(code); this.status = status; }
@@ -195,8 +195,9 @@ export function createApi({ store, origins, secureCookies, now = Date.now, cooki
         }
         if (url.pathname === '/api/admin/courier-audit' && method === 'GET') {
           const page = Number(url.searchParams.get('page') ?? '1');
-          if (!Number.isSafeInteger(page) || page < 1) throw new HttpError(400, 'invalid_page');
-          json(response, store.listCourierAudit(page));
+          const pageSize = Number(url.searchParams.get('pageSize') ?? courierPageSizes[0]);
+          if (!Number.isSafeInteger(page) || page < 1 || !courierPageSizes.includes(pageSize)) throw new HttpError(400, 'invalid_page');
+          json(response, store.listCourierAudit(page, pageSize));
           return true;
         }
         const match = url.pathname.match(/^\/api\/admin\/couriers\/([1-9]\d{0,15})$/);

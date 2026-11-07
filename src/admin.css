@@ -43,6 +43,7 @@
 .admin-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
 .admin-tabs button { min-height: 44px; padding: 8px 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
 .admin-tabs button[aria-selected='true'] { border-bottom-color: var(--purple); color: var(--ink); font-weight: 700; }
+.admin-audit-page-size { max-width: 240px; }
 .admin-empty { padding: 45px 20px; text-align: center; }
 .admin-empty h2 { font-size: 1.3rem; margin-bottom: 12px; }
 .admin-empty p { color: var(--muted); font-size: .95rem; }

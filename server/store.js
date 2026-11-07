@@ -148,13 +148,12 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
     },
     deleteCourier(id, actor) { return mutateCourier(id, actor, null); },
     setStatus(id, status, actor) { return mutateCourier(id, actor, status); },
-    listCourierAudit(requestedPage) {
-      const pageSize = 20;
+    listCourierAudit(requestedPage, pageSize) {
       const { total } = db.prepare('SELECT COUNT(*) AS total FROM courier_audit_log').get();
       const totalPages = Math.max(1, Math.ceil(total / pageSize));
       const page = Math.min(requestedPage, totalPages);
       const items = db.prepare('SELECT * FROM courier_audit_log ORDER BY id DESC LIMIT ? OFFSET ?').all(pageSize, (page - 1) * pageSize);
-      return { items, page, totalPages };
+      return { items, page, pageSize, totalPages };
     },
   };
 
