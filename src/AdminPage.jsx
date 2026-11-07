@@ -8,6 +8,7 @@ import { canonicalCity, courierPageSizes } from '../shared/courier-filters.js';
 const labels = {
   ar: {
     title: 'طلبات الانضمام للمندوبين', intro: 'راجع الطلبات المسجّلة وتابع حالة التواصل من مكان واحد.',
+    audit: 'سجل الإجراءات', views: 'أقسام لوحة الإدارة',
     login: 'تسجيل دخول الإدارة', username: 'اسم المستخدم', password: 'كلمة المرور', signIn: 'دخول', signingIn: 'جارٍ الدخول…',
     loading: 'جارٍ التحميل…', logout: 'تسجيل الخروج', refresh: 'تحديث',
     setup: 'أضف ADMIN_USERNAME وADMIN_PASSWORD وADMIN_JWT_SECRET في ملف .env الخاص بالخادم، ثم أعد تشغيله. يلزم اسم مستخدم من 3 أحرف وكلمة مرور من 4 أحرف على الأقل ومفتاح عشوائي من 64 خانة بالنظام الست عشري.',
@@ -24,6 +25,7 @@ const labels = {
   },
   en: {
     title: 'Courier applications', intro: 'Review registered applicants and keep track of follow-up in one place.',
+    audit: 'Audit log', views: 'Dashboard views',
     login: 'Admin sign-in', username: 'Username', password: 'Password', signIn: 'Sign in', signingIn: 'Signing in…',
     loading: 'Loading…', logout: 'Sign out', refresh: 'Refresh',
     setup: 'Set ADMIN_USERNAME, ADMIN_PASSWORD and ADMIN_JWT_SECRET in the server’s private .env file, then restart it. Use at least 3 characters for the username, 4 for the password, and 64 random hexadecimal characters for the signing secret.',
@@ -61,6 +63,7 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState('');
   const [revision, setRevision] = useState(0);
+  const [activeTab, setActiveTab] = useState('couriers');
   const pending = useRef(false);
   const savingRef = useRef(false);
   const ready = useRef(null);
@@ -187,9 +190,29 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
   const firstRecord = matchesQuery && data.total ? (data.page - 1) * data.pageSize + 1 : 0;
   const lastRecord = matchesQuery && data.total ? firstRecord + data.items.length - 1 : 0;
   const paginationBusy = !matchesQuery || loading || busy || !!saving;
+  const auditActive = activeTab === 'audit';
+
+  function navigateTabs(event) {
+    const tabs = [...event.currentTarget.querySelectorAll('[role="tab"]')];
+    const index = tabs.indexOf(event.target);
+    if (index < 0) return;
+    let next;
+    if (event.key === 'Home') next = tabs[0];
+    else if (event.key === 'End') next = tabs[tabs.length - 1];
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') next = tabs[1 - index];
+    else return;
+    event.preventDefault();
+    next.focus();
+    next.click();
+  }
   const cityLabel = (value) => cities.find(([id]) => id === canonicalCity(value))?.[language === 'ar' ? 1 : 2] || value;
   return <section className="shell admin-section">
-    <div className="admin-heading"><div><h1 ref={ready} tabIndex="-1">{c.title}</h1><p>{c.intro}</p></div><div className="admin-actions"><button className="text-link" onClick={() => setRevision((value) => value + 1)} disabled={loading || busy}>{c.refresh}</button><button className="button button-small" onClick={signOut} disabled={busy || !!saving}>{c.logout}</button></div></div>
+    <div className="admin-heading"><div><h1 ref={ready} tabIndex="-1">{auditActive ? c.audit : c.title}</h1>{!auditActive && <p>{c.intro}</p>}</div><div className="admin-actions"><button className="text-link" onClick={() => setRevision((value) => value + 1)} disabled={loading || busy}>{c.refresh}</button><button className="button button-small" onClick={signOut} disabled={busy || !!saving}>{c.logout}</button></div></div>
+    <div className="admin-tabs" role="tablist" aria-label={c.views} onKeyDown={navigateTabs}>
+      <button type="button" role="tab" id="admin-couriers-tab" aria-controls="admin-couriers-panel" aria-selected={!auditActive} tabIndex={auditActive ? -1 : 0} onClick={() => setActiveTab('couriers')}>{c.title}</button>
+      <button type="button" role="tab" id="admin-audit-tab" aria-controls="admin-audit-panel" aria-selected={auditActive} tabIndex={auditActive ? 0 : -1} onClick={() => setActiveTab('audit')}>{c.audit}</button>
+    </div>
+    <div id="admin-couriers-panel" role="tabpanel" aria-labelledby="admin-couriers-tab" tabIndex={0} hidden={auditActive}>
     <div className="admin-counts">{['total', ...reviewStatuses].map((key) => <article key={key}><span>{c[key]}</span><strong>{data?.counts[key] ?? '—'}</strong></article>)}</div>
     <AdminTransfer language={language} filters={filters} csrfToken={session.csrfToken} onSession={setSession} onImported={() => { setPage(1); setRevision((value) => value + 1); }} disabled={busy || !!saving} filteredDisabled={loading || !matchesQuery} />
     <form className="admin-filters" onSubmit={(event) => { event.preventDefault(); setPage(1); setPhone(draftPhone.trim()); setRevision((value) => value + 1); }}>
@@ -206,6 +229,9 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
       <span aria-live="polite">{firstRecord}–{lastRecord} {c.of} {matchesQuery ? data.total : '—'} {c.results} · {c.page} {page} {c.of} {lastPage}</span>
       <div className="admin-pagination-buttons"><button className="text-link pagination-previous" disabled={paginationBusy || !data?.hasPrevious} onClick={() => setPage((value) => Math.max(1, value - 1))}><Icon name="arrow" />{c.previous}</button><button className="text-link pagination-next" disabled={paginationBusy || !data?.hasNext} onClick={() => setPage((value) => Math.min(lastPage, value + 1))}>{c.next}<Icon name="arrow" /></button></div>
     </div>
-    <AdminAudit language={language} copy={c} revision={revision} dateLabel={dateLabel} onSession={setSession} />
+    </div>
+    <div id="admin-audit-panel" role="tabpanel" aria-labelledby="admin-audit-tab" tabIndex={0} hidden={!auditActive}>
+      {auditActive && <AdminAudit language={language} copy={c} revision={revision} dateLabel={dateLabel} onSession={setSession} />}
+    </div>
   </section>;
 }
