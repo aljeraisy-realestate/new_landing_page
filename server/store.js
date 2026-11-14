@@ -20,8 +20,14 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
     PRAGMA busy_timeout = 5000;
   `);
   try { migrate(db); } catch (error) { db.close(); throw error; }
-  const insert = db.prepare(`INSERT INTO courier_leads (name, phone, city, phone_type, ref, locale)
-    VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(phone) DO NOTHING RETURNING id`);
+  // ASVS 1.2.4: bind validated registration fields to the SQL statements.
+  const insert = db.prepare(`INSERT INTO courier_leads (name, phone, city, phone_type, ref, locale, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(phone) DO NOTHING RETURNING id`);
+  const updateCourier = db.prepare(`UPDATE courier_leads
+    SET name = ?, city = ?, phone_type = ?, ref = COALESCE(?, ref), locale = ?, updated_at = ?
+    WHERE phone = ? RETURNING id`);
+  const saveConsent = db.prepare(`INSERT INTO courier_lead_reviews (lead_id, status, consent_at) VALUES (?, 'new', ?)
+    ON CONFLICT(lead_id) DO UPDATE SET consent_at = excluded.consent_at`);
   const counters = Object.fromEntries(['admin_login_attempts', 'courier_submission_limits'].map((table) => [table, db.prepare(`
     INSERT INTO ${table} (key, attempts, reset_at) VALUES (?, 1, ?)
     ON CONFLICT(key) DO UPDATE SET
@@ -36,7 +42,7 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
     const where = `WHERE (? = '' OR COALESCE(reviews.status, 'new') = ?) AND (? = '' OR instr(lower(leads.name), lower(?)) > 0 OR instr(leads.phone, ?) > 0 OR instr(lower(leads.city), lower(?)) > 0 OR instr(?, ',' || leads.city || ',') > 0)
       AND (? = '' OR lower(leads.city) IN (${aliases.map(() => '?').join(',')}))
       AND (? = '' OR instr(leads.phone, ?) > 0) AND (? = '' OR leads.phone_type = ?)`;
-    const columns = { id: 'leads.id', name: 'leads.name COLLATE NOCASE', phone: 'leads.phone', city: 'leads.city COLLATE NOCASE', phone_type: 'leads.phone_type', created_at: 'julianday(leads.created_at)', status: "COALESCE(reviews.status, 'new')" };
+    const columns = { id: 'leads.id', name: 'leads.name COLLATE NOCASE', phone: 'leads.phone', city: 'leads.city COLLATE NOCASE', phone_type: 'leads.phone_type', created_at: 'julianday(leads.created_at)', updated_at: 'COALESCE(julianday(leads.updated_at), julianday(leads.created_at))', status: "COALESCE(reviews.status, 'new')" };
     const direction = sortDirection === 'asc' ? 'ASC' : 'DESC';
     return { from, where, params: [status, status, search, search, search, search, cityIds, city, ...aliases, phone, phone, phoneType, phoneType], order: `${columns[sortBy]} ${direction}, leads.id ${direction}` };
   };
@@ -58,10 +64,12 @@ export function openStore(root, filename, dataDirectory, requireExisting = false
     addCourier(courier) {
       db.exec('BEGIN IMMEDIATE');
       try {
-        const lead = insert.get(courier.name, courier.phone, courier.city, courier.phoneType, courier.ref ?? null, courier.locale);
-        if (lead) db.prepare('INSERT INTO courier_lead_reviews (lead_id, status, consent_at) VALUES (?, ?, ?)').run(lead.id, 'new', new Date().toISOString());
+        const submittedAt = new Date().toISOString();
+        const inserted = insert.get(courier.name, courier.phone, courier.city, courier.phoneType, courier.ref ?? null, courier.locale, submittedAt);
+        const lead = inserted ?? updateCourier.get(courier.name, courier.city, courier.phoneType, courier.ref ?? null, courier.locale, submittedAt, courier.phone);
+        saveConsent.run(lead.id, submittedAt);
         db.exec('COMMIT');
-        return Boolean(lead);
+        return inserted ? 'created' : 'updated';
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     },
     importCouriers(records) {

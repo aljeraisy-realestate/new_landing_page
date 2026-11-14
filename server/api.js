@@ -107,9 +107,9 @@ export function createApi({ store, origins, secureCookies, now = Date.now, cooki
         const courier = validateCourier(await readJson(request));
         if (!courier) throw new HttpError(400, 'invalid_fields');
         limited(`courier:phone:${hash(courier.phone)}`, 5, 15 * 60 * 1000);
-        if (!store.addCourier(courier)) throw new HttpError(409, 'already_registered');
+        const outcome = store.addCourier(courier);
         json(response, { ok: true }, 201);
-        record(201, 'created');
+        record(201, outcome);
         return true;
       }
       if (url.pathname === '/api/admin/session' && method === 'POST') {

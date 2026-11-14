@@ -20,6 +20,8 @@ test('phone input blocks the eleventh digit and letters while retaining editing 
 
 test('paste and autofill values are reduced to at most ten digits', () => {
   assert.equal(phoneInputValue('05512345678901234'), '0551234567');
+  assert.equal(phoneInputValue('+966 55 123 4567'), '0551234567');
+  assert.equal(phoneInputValue('00966 55 123 4567'), '0551234567');
   assert.equal(phoneInputValue('055 123-4567abc'), '0551234567');
   assert.equal(phoneInputValue('٠٥٥١٢٣٤٥٦٧٨٩'), '٠٥٥١٢٣٤٥٦٧');
   assert.equal(phoneInputValue(''), '');

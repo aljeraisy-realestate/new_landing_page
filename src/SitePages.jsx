@@ -38,6 +38,16 @@ function CourierPage({ language, Icon }) {
     if (status === 'error' || status === 'invalid') setStatus('idle');
   }
 
+  function pastePhone(event) {
+    const pasted = event.clipboardData.getData('text');
+    const input = event.currentTarget;
+    const replacement = normalizePhone(pasted);
+    const value = replacement || `${input.value.slice(0, input.selectionStart)}${pasted}${input.value.slice(input.selectionEnd)}`;
+    event.preventDefault();
+    input.value = phoneInputValue(value);
+    update(event);
+  }
+
   async function submit(event) {
     event.preventDefault();
     if (pending.current) return;
@@ -71,12 +81,9 @@ function CourierPage({ language, Icon }) {
         method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(payload), credentials: 'same-origin', signal: controller.signal,
       });
-      if (response.status === 409 && response.headers.get('content-type')?.includes('application/json')) {
-        const body = await response.json();
-        if (body.error === 'already_registered') {
-          if (request.current === controller) { setSubmissionError('alreadyRegistered'); setStatus('error'); }
-          return;
-        }
+      if (response.status === 429) {
+        if (request.current === controller) { setSubmissionError('submitLimited'); setStatus('error'); }
+        return;
       }
       if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error('submission_failed');
       const body = await response.json();
@@ -107,7 +114,7 @@ function CourierPage({ language, Icon }) {
           <h2>{c.application}</h2><p className="form-intro">{c.formNote}</p>
           <fieldset disabled={status === 'sending'}>
             <label className="form-field"><span>{c.name}</span><input {...fieldProps('name')} autoComplete="name" required maxLength="100" placeholder={c.namePlaceholder} />{errorFor('name')}</label>
-            <label className="form-field"><span>{c.mobile}</span><input {...fieldProps('phone')} onKeyDown={phoneKeyDown} onInput={update} type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength="10" dir="ltr" placeholder="0551234567" aria-describedby={`phone-hint${errors.phone ? ' error-phone' : ''}`} />{errorFor('phone')}</label>
+            <label className="form-field"><span>{c.mobile}</span><input {...fieldProps('phone')} onKeyDown={phoneKeyDown} onPaste={pastePhone} onInput={update} type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength="10" dir="ltr" placeholder="0551234567" aria-describedby={`phone-hint${errors.phone ? ' error-phone' : ''}`} />{errorFor('phone')}</label>
             <p id="phone-hint" className="field-hint phone-field-hint">{c.phoneHint}</p>
             <div className="form-row">
               <label className="form-field"><span>{c.city}</span><select {...fieldProps('city')} autoComplete="address-level2" required><option value="">{c.chooseCity}</option>{cities.map(([id, arabic, english]) => <option key={id} value={id}>{ar ? arabic : english}</option>)}<option value="other">{c.otherCity}</option></select>{errorFor('city')}</label>

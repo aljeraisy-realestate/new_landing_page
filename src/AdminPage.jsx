@@ -15,7 +15,7 @@ const labels = {
     invalid: 'بيانات الدخول غير صحيحة.', limited: 'محاولات كثيرة. انتظر قليلاً قبل المحاولة مجدداً.', error: 'تعذّر إكمال العملية. حاول مرة أخرى.',
     searchButton: 'بحث', filter: 'حالة الطلب', all: 'كل الحالات',
     total: 'جميع الطلبات', new: 'جديد', contacted: 'تم التواصل', accepted: 'مقبول',
-    name: 'الاسم', phone: 'رقم الجوال', city: 'المدينة', device: 'الجهاز', ref: 'الإحالة', created: 'تاريخ التسجيل', status: 'الحالة',
+    name: 'الاسم', phone: 'رقم الجوال', city: 'المدينة', device: 'الجهاز', ref: 'الإحالة', created: 'آخر تحديث', status: 'الحالة',
     empty: 'لا توجد طلبات مطابقة.', emptyHint: 'ستظهر هنا طلبات المندوبين بعد إرسال نموذج الانضمام.',
     previous: 'السابق', next: 'التالي', page: 'الصفحة', of: 'من', results: 'نتيجة',
     saved: 'تم حفظ الحالة.', statusFor: 'حالة طلب', retry: 'حاول مرة أخرى',
@@ -32,7 +32,7 @@ const labels = {
     invalid: 'The sign-in details are incorrect.', limited: 'Too many attempts. Wait before trying again.', error: 'The request could not be completed. Please try again.',
     searchButton: 'Search', filter: 'Application status', all: 'All statuses',
     total: 'All applications', new: 'New', contacted: 'Contacted', accepted: 'Accepted',
-    name: 'Name', phone: 'Mobile number', city: 'City', device: 'Device', ref: 'Referral', created: 'Registered', status: 'Status',
+    name: 'Name', phone: 'Mobile number', city: 'City', device: 'Device', ref: 'Referral', created: 'Last updated', status: 'Status',
     empty: 'No matching applications.', emptyHint: 'Submitted courier applications will appear here.',
     previous: 'Previous', next: 'Next', page: 'Page', of: 'of', results: 'results',
     saved: 'Status saved.', statusFor: 'Application status for', retry: 'Try again',
@@ -68,7 +68,7 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
   const savingRef = useRef(false);
   const ready = useRef(null);
   const messageFor = (failure) => failure.status === 429 ? 'limited' : failure.message === 'invalid_credentials' ? 'invalid' : failure.message === 'invalid_filters' ? 'filtersError' : 'error';
-  const filters = { status, city, phone, phoneType, sortBy: 'created_at', sortDirection: 'desc' };
+  const filters = { status, city, phone, phoneType, sortBy: 'updated_at', sortDirection: 'desc' };
   const queryKey = new URLSearchParams({ ...filters, page: String(page), pageSize: String(pageSize) }).toString();
   const matchesQuery = data?.queryKey === queryKey;
 
@@ -224,7 +224,7 @@ export default function AdminPage({ language, Icon, onAuthenticated }) {
       <div className="admin-filter-actions"><button className="button" type="submit" disabled={busy || !!saving}>{c.searchButton}</button><button className="text-link" type="button" onClick={() => { setDraftPhone(''); setPhone(''); setCity(''); setPhoneType(''); setStatus(''); setPage(1); }}>{c.clear}</button></div>
     </form>
     {error && <p className="form-error" role="alert">{c[error]}</p>}<p className="admin-notice" role="status">{notice ? c[notice] : loading ? c.loading : ''}</p>
-    <div className="admin-table-wrap" aria-busy={loading}><table className="admin-table"><caption className="sr-only">{c.title}</caption><thead><tr>{['id', 'name', 'phone', 'city', 'device', 'ref', 'created', 'status', 'actions'].map((key) => <th key={key} scope="col">{c[key]}</th>)}</tr></thead><tbody>{matchesQuery && data.items.map((row) => <tr key={row.id}><td className="courier-id"><bdi>{row.id}</bdi></td><td>{row.name}</td><td><bdi>{row.phone}</bdi></td><td>{cityLabel(row.city)}</td><td>{row.phone_type === 'iphone' ? 'iPhone' : 'Android'}</td><td>{row.ref || '—'}</td><td>{dateLabel(row.created_at)}</td><td><select aria-label={`${c.statusFor} ${row.name}`} value={row.status} disabled={loading || !!saving || busy} onChange={(event) => mutateCourier(row.id, { method: 'PATCH', body: { status: event.target.value } }, 'saved')}>{reviewStatuses.map((value) => <option key={value} value={value}>{c[value]}</option>)}</select>{saving === row.id && <span className="sr-only" role="status">{c.loading}</span>}</td><td><button className="button button-small admin-delete" type="button" aria-label={`${c.delete} #${row.id}`} disabled={loading || !!saving || busy} onClick={() => deleteCourier(row.id)}>{c.delete}</button></td></tr>)}</tbody></table>{!loading && matchesQuery && data.items.length === 0 && <div className="admin-empty"><h2>{c.empty}</h2><p>{c.emptyHint}</p></div>}</div>
+    <div className="admin-table-wrap" aria-busy={loading}><table className="admin-table"><caption className="sr-only">{c.title}</caption><thead><tr>{['id', 'name', 'phone', 'city', 'device', 'ref', 'created', 'status', 'actions'].map((key) => <th key={key} scope="col">{c[key]}</th>)}</tr></thead><tbody>{matchesQuery && data.items.map((row) => <tr key={row.id}><td className="courier-id"><bdi>{row.id}</bdi></td><td>{row.name}</td><td><bdi>{row.phone}</bdi></td><td>{cityLabel(row.city)}</td><td>{row.phone_type === 'iphone' ? 'iPhone' : 'Android'}</td><td>{row.ref || '—'}</td><td>{dateLabel(row.updated_at || row.created_at)}</td><td><select aria-label={`${c.statusFor} ${row.name}`} value={row.status} disabled={loading || !!saving || busy} onChange={(event) => mutateCourier(row.id, { method: 'PATCH', body: { status: event.target.value } }, 'saved')}>{reviewStatuses.map((value) => <option key={value} value={value}>{c[value]}</option>)}</select>{saving === row.id && <span className="sr-only" role="status">{c.loading}</span>}</td><td><button className="button button-small admin-delete" type="button" aria-label={`${c.delete} #${row.id}`} disabled={loading || !!saving || busy} onClick={() => deleteCourier(row.id)}>{c.delete}</button></td></tr>)}</tbody></table>{!loading && matchesQuery && data.items.length === 0 && <div className="admin-empty"><h2>{c.empty}</h2><p>{c.emptyHint}</p></div>}</div>
     <div className="admin-pagination">
       <span aria-live="polite">{firstRecord}–{lastRecord} {c.of} {matchesQuery ? data.total : '—'} {c.results} · {c.page} {page} {c.of} {lastPage}</span>
       <div className="admin-pagination-buttons"><button className="text-link pagination-previous" disabled={paginationBusy || !data?.hasPrevious} onClick={() => setPage((value) => Math.max(1, value - 1))}><Icon name="arrow" />{c.previous}</button><button className="text-link pagination-next" disabled={paginationBusy || !data?.hasNext} onClick={() => setPage((value) => Math.min(lastPage, value + 1))}>{c.next}<Icon name="arrow" /></button></div>

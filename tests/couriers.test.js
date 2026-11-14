@@ -28,7 +28,7 @@ test('normalizes Saudi phone formats and rejects invalid consent and injected fi
   assert.equal(validateCourier({ ...applicant, city: 'other', cityOther: 'الخرج' })?.city, 'الخرج');
 });
 
-test('SQLite survives reopening, preserves duplicate applicants, and binds search filters', () => {
+test('SQLite survives reopening, updates duplicate applicants, and binds search filters', () => {
   const directory = mkdtempSync(join(tmpdir(), 'giftly-store-'));
   let store = openStore(directory);
   try {
@@ -36,7 +36,7 @@ test('SQLite survives reopening, preserves duplicate applicants, and binds searc
     store.addCourier(validateCourier({ ...applicant, name: 'Different Person' }));
     let result = store.list(filters);
     assert.equal(result.total, 1);
-    assert.equal(result.items[0].name, applicant.name);
+    assert.equal(result.items[0].name, 'Different Person');
     assert.equal(typeof result.items[0].id, 'number');
     assert.equal(result.items[0].ref, null);
     assert.match(result.items[0].created_at, /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
@@ -190,13 +190,13 @@ test('admin APIs require authentication, correct origin, CSRF, and a live sessio
       assert.equal((await send('/api/couriers', { method: 'POST', body: applicant, originHeader: 'https://untrusted.example' })).status, 403);
       assert.equal((await send('/api/couriers', { method: 'POST', body: { ...applicant, name: 'a'.repeat(9000) } })).status, 413);
     });
-    await t.test('successful registration persists and duplicate phones are reported without overwriting', async () => {
+    await t.test('new and repeat registrations both succeed', async () => {
       const first = await send('/api/courier-leads', { method: 'POST', body: { ...applicant, ref: 'launch_2026' } });
       const duplicate = await send('/api/couriers', { method: 'POST', body: { ...applicant, name: 'Different Person' } });
-      assert.equal(first.status, 201); assert.equal(duplicate.status, 409);
+      assert.equal(first.status, 201); assert.equal(duplicate.status, 201);
       assert.deepEqual(await first.json(), { ok: true });
-      assert.deepEqual(await duplicate.json(), { error: 'already_registered' });
-      assert.equal(store.list(filters).items[0].name, applicant.name);
+      assert.deepEqual(await duplicate.json(), { ok: true });
+      assert.equal(store.list(filters).items[0].name, 'Different Person');
       assert.equal(store.list(filters).items[0].ref, 'launch_2026');
     });
     const bad = await send('/api/admin/session', { method: 'POST', body: { username: 'test-admin', password: 'incorrect' } });
@@ -293,7 +293,7 @@ test('admin APIs require authentication, correct origin, CSRF, and a live sessio
     });
     await t.test('phone and sign-in request limits reject repeated attempts', async () => {
       // The earlier future cleanup reset the request-limit windows too.
-      for (let index = 0; index < 5; index += 1) assert.equal((await send('/api/couriers', { method: 'POST', body: applicant })).status, 409);
+      for (let index = 0; index < 5; index += 1) assert.equal((await send('/api/couriers', { method: 'POST', body: applicant })).status, 201);
       assert.equal((await send('/api/couriers', { method: 'POST', body: applicant })).status, 429);
       let response;
       for (let index = 0; index < 9; index += 1) response = await send('/api/admin/session', { method: 'POST', body: { username: 'test-admin', password: 'incorrect' } });

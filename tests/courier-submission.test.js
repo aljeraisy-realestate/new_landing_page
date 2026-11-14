@@ -9,7 +9,7 @@ import { openStore } from '../server/store.js';
 
 const applicant = { name: 'Test Applicant', phone: '0512345678', city: 'riyadh', phoneType: 'iphone', locale: 'ar', consent: true };
 
-test('courier submissions accept both Giftly domains, report duplicates, and log safely', async () => {
+test('courier submissions accept both Giftly domains, update duplicates, and log safely', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'giftly-submission-'));
   const store = openStore(directory);
   const logs = [];
@@ -30,18 +30,29 @@ test('courier submissions accept both Giftly domains, report duplicates, and log
     assert.equal((await send(applicant, 'https://giftly.sa.evil.example')).status, 403);
     origins.clear(); origins.add('https://www.giftly.sa');
     assert.equal((await send(applicant, 'https://www.www.giftly.sa')).status, 403);
-    const duplicate = await send({ ...applicant, name: 'Changed Name' });
-    assert.equal(duplicate.status, 409);
-    assert.equal(duplicate.body.error, 'already_registered');
+    const original = store.list({}).items[0];
+    store.setStatus(original.id, 'accepted', 'test-admin');
+    const duplicate = await send({ ...applicant, phone: '+966512345678', name: 'Changed Name', city: 'jeddah' });
+    assert.equal(duplicate.status, 201);
+    assert.deepEqual(duplicate.body, { ok: true });
     assert.equal(store.list({}).total, 1);
-    assert.equal(store.list({}).items[0].name, applicant.name);
+    const updated = store.list({}).items[0];
+    assert.equal(updated.id, original.id);
+    assert.equal(updated.created_at, original.created_at);
+    assert.equal(updated.name, 'Changed Name');
+    assert.equal(updated.city, 'jeddah');
+    assert.equal(updated.status, 'accepted');
     // Distinct applicants behind one reverse proxy must not share a 20-request IP cap.
     for (let index = 0; index < 25; index++) {
       assert.equal((await send({ ...applicant, phone: `059${String(index).padStart(7, '0')}` })).status, 201);
     }
     assert.ok(logs.some((entry) => entry.status === 201));
     assert.ok(logs.some((entry) => entry.code === 'forbidden_origin'));
-    assert.ok(logs.some((entry) => entry.code === 'already_registered'));
+    assert.ok(logs.some((entry) => entry.code === 'updated'));
+    // Give later inserts time to sort below a resubmission of the older ID.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await send(applicant);
+    assert.equal(store.list({ sortBy: 'updated_at' }).items[0].id, original.id);
     const save = store.addCourier;
     store.addCourier = () => { throw Object.assign(new Error('Private phone 0512345678'), { code: 'SQLITE_BUSY' }); };
     const failure = await send({ ...applicant, phone: '0588888888' });

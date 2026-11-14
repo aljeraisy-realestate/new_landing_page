@@ -1,7 +1,7 @@
 import { cities, normalizePhone, reviewStatuses } from './courier.js';
 
 export const courierPageSizes = [20, 50, 100];
-export const courierSortFields = ['id', 'name', 'phone', 'city', 'phone_type', 'created_at', 'status'];
+export const courierSortFields = ['id', 'name', 'phone', 'city', 'phone_type', 'created_at', 'updated_at', 'status'];
 export const canonicalCity = (value) => cities.find((labels) => labels.some((label) => label.toLowerCase() === value.toLowerCase()))?.[0] || value;
 export const cityAliases = (value) => cities.find(([id]) => id === canonicalCity(value))?.map((label) => label.toLowerCase()) || [value.toLowerCase()];
 
